@@ -25,7 +25,6 @@ namespace Unit {
         static constexpr double pi = 3.14159265358979323846;
 
         template <size_t N>
-
         struct FixedString {
             char buf[N]{};
 
@@ -40,7 +39,6 @@ namespace Unit {
         };
 
         template <FixedString Name, int Exponent>
-
         struct Dim {
             static constexpr auto name = Name;
 
@@ -48,38 +46,31 @@ namespace Unit {
         };
 
         template <typename... _>
-
         struct Unit {
         };
 
         template <typename T, typename U>
-
         struct Prepend;
 
         template <typename T, typename... Ds>
-
         struct Prepend<T, Unit<Ds...>> {
             using type = Unit<T, Ds...>;
         };
 
         template <typename NewDim, typename CurrentUnit>
-
         struct AddDimToUnit;
 
         template <typename NewDim>
-
         struct AddDimToUnit<NewDim, Unit<>> {
             using type = Unit<NewDim>;
         };
 
         template <FixedString N, int E1, int E2, typename... Rest>
-
         struct AddDimToUnit<Dim<N, E1>, Unit<Dim<N, E2>, Rest...>> {
             using type = Unit<Dim<N, E1 + E2>, Rest...>;
         };
 
         template <typename NewDim, typename Head, typename... Tail>
-
         struct AddDimToUnit<NewDim, Unit<Head, Tail...>> {
             using next_step = AddDimToUnit<NewDim, Unit<Tail...>>::type;
 
@@ -87,17 +78,14 @@ namespace Unit {
         };
 
         template <typename UnitA, typename UnitB>
-
         struct MultiplyUnits;
 
         template <typename UnitA>
-
         struct MultiplyUnits<UnitA, Unit<>> {
             using type = UnitA;
         };
 
         template <typename UnitA, typename HeadB, typename... TailB>
-
         struct MultiplyUnits<UnitA, Unit<HeadB, TailB...>> {
             using PartialMerged = AddDimToUnit<HeadB, UnitA>::type;
 
@@ -105,27 +93,22 @@ namespace Unit {
         };
 
         template <typename D>
-
         struct InvertDim;
 
         template <FixedString N, int E>
-
         struct InvertDim<Dim<N, E>> {
             using type = Dim<N, -E>;
         };
 
         template <typename U>
-
         struct InvertUnit;
 
         template <>
-
         struct InvertUnit<Unit<>> {
             using type = Unit<>;
         };
 
         template <typename Head, typename... Tail>
-
         struct InvertUnit<Unit<Head, Tail...>> {
             using InvertedHead = InvertDim<Head>::type;
 
@@ -135,7 +118,6 @@ namespace Unit {
         };
 
         template <typename UnitA, typename UnitB>
-
         struct DivideUnits {
             using InvertedB = InvertUnit<UnitB>::type;
 
@@ -178,13 +160,11 @@ namespace Unit {
         }
 
         template <typename OtherU>
-
         constexpr auto operator*(const Quantity<OtherU>& rhs) const {
             return Quantity<typename extra::MultiplyUnits<U, OtherU>::type>(value * rhs.value);
         }
 
         template <typename OtherU>
-
         constexpr auto operator/(const Quantity<OtherU>& rhs) const {
             return Quantity<typename extra::DivideUnits<U, OtherU>::type>(value / rhs.value);
         }
@@ -194,54 +174,43 @@ namespace Unit {
         }
     };
 
-
     template <typename U, typename V>
-
     static constexpr Quantity<U, V> operator*(long double lhs, const Quantity<U, V>& rhs) {
         return Quantity<U, V>(lhs * rhs.value);
     }
 
-
     template <typename U, typename V>
-
     static constexpr Quantity<U, V> operator/(long double lhs, const Quantity<U, V>& rhs) {
         return Quantity<U, V>(lhs / rhs.value);
     }
 
-
     namespace std {
         template <typename U, typename V>
-
         static Quantity<U, V> abs(Quantity<U, V> q) {
             return Quantity<U, V>(std::abs(q.value));
         }
 
         template <typename U, typename V>
-
         static Quantity<U, V> fmod(Quantity<U, V> q) {
             return Quantity<U, V>(std::fmod(q.value));
         }
 
         template <typename U, typename V>
-
         static Quantity<U, V> sin(Quantity<U, V> q) {
             return Quantity<U, V>(std::sin(q.value));
         }
 
         template <typename U, typename V>
-
         static Quantity<U, V> cos(Quantity<U, V> q) {
             return Quantity<U, V>(std::cos(q.value));
         }
 
         template <typename U, typename V>
-
         static Quantity<U, V> tan(Quantity<U, V> q) {
             return Quantity<U, V>(std::tan(q.value));
         }
 
         template <typename U, typename V>
-
         static Quantity<U, V> fmod(Quantity<U, V> v1, Quantity<U, V> v2) {
             return Quantity<U, V>(std::fmod(v1.value, v2.value));
         }
