@@ -4,21 +4,14 @@
 #include <algorithm>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 1;
+static constexpr int UNIT_HPP_VERSION_MINOR = 2;
 
 namespace Unit {
     namespace extra {
         constexpr long double power_of_10(int n) {
             long double result = 1.0;
-            if (n >= 0) {
-                for (int i = 0; i < n; ++i) {
-                    result *= 10.0L;
-                }
-            } else {
-                for (int i = 0; i < -n; ++i) {
-                    result /= 10.0L;
-                }
-            }
+            if (n >= 0) for (int i = 0; i < n; ++i) result *= 10.0L;
+            else for (int i = 0; i < -n; ++i) result /= 10.0L;
             return result;
         }
 
@@ -49,6 +42,20 @@ namespace Unit {
         struct Unit {
         };
 
+        template <typename D>
+        void print_single_dim(std::ostream& os) {
+            os << D::name.buf;
+            if (D::exp != 1) {
+                os << "^" << D::exp;
+            }
+        }
+
+        template <typename... Ds>
+        void print_unit_impl(std::ostream& os, Unit<Ds...>) {
+            size_t n = 0;
+            ((print_single_dim<Ds>(os), (++n < sizeof...(Ds) ? os << "*" : os)), ...);
+        }
+
         template <typename T, typename U>
         struct Prepend;
 
@@ -67,14 +74,17 @@ namespace Unit {
 
         template <FixedString N, int E1, int E2, typename... Rest>
         struct AddDimToUnit<Dim<N, E1>, Unit<Dim<N, E2>, Rest...>> {
-            using type = Unit<Dim<N, E1 + E2>, Rest...>;
+            static constexpr int sum = E1 + E2;
+            using type = std::conditional_t<
+                sum == 0,
+                Unit<Rest...>,
+                Unit<Dim<N, sum>, Rest...>
+            >;
         };
 
         template <typename NewDim, typename Head, typename... Tail>
         struct AddDimToUnit<NewDim, Unit<Head, Tail...>> {
-            using next_step = AddDimToUnit<NewDim, Unit<Tail...>>::type;
-
-            using type = Prepend<Head, next_step>::type;
+            using type = Prepend<Head, typename AddDimToUnit<NewDim, Unit<Tail...>>::type>::type;
         };
 
         template <typename UnitA, typename UnitB>
@@ -87,9 +97,7 @@ namespace Unit {
 
         template <typename UnitA, typename HeadB, typename... TailB>
         struct MultiplyUnits<UnitA, Unit<HeadB, TailB...>> {
-            using PartialMerged = AddDimToUnit<HeadB, UnitA>::type;
-
-            using type = MultiplyUnits<PartialMerged, Unit<TailB...>>::type;
+            using type = MultiplyUnits<typename AddDimToUnit<HeadB, UnitA>::type, Unit<TailB...>>::type;
         };
 
         template <typename D>
@@ -110,18 +118,12 @@ namespace Unit {
 
         template <typename Head, typename... Tail>
         struct InvertUnit<Unit<Head, Tail...>> {
-            using InvertedHead = InvertDim<Head>::type;
-
-            using InvertedTail = InvertUnit<Unit<Tail...>>::type;
-
-            using type = Prepend<InvertedHead, InvertedTail>::type;
+            using type = Prepend<typename InvertDim<Head>::type, typename InvertUnit<Unit<Tail...>>::type>::type;
         };
 
         template <typename UnitA, typename UnitB>
         struct DivideUnits {
-            using InvertedB = InvertUnit<UnitB>::type;
-
-            using type = MultiplyUnits<UnitA, InvertedB>::type;
+            using type = MultiplyUnits<UnitA, typename InvertUnit<UnitB>::type>::type;
         };
     }
 
@@ -139,11 +141,11 @@ namespace Unit {
             return value;
         }
 
-        constexpr Quantity operator*(long double rhs) const {
+        constexpr auto operator*(long double rhs) const {
             return Quantity(value * rhs);
         }
 
-        constexpr Quantity operator/(long double rhs) const {
+        constexpr auto operator/(long double rhs) const {
             return Quantity(value / rhs);
         }
 
@@ -161,16 +163,25 @@ namespace Unit {
 
         template <typename OtherU>
         constexpr auto operator*(const Quantity<OtherU>& rhs) const {
-            return Quantity<typename extra::MultiplyUnits<U, OtherU>::type>(value * rhs.value);
+            if constexpr (std::is_same_v<typename extra::MultiplyUnits<U, OtherU>::type, extra::Unit<>>) {
+                return value * rhs.value;
+            } else return Quantity<typename extra::MultiplyUnits<U, OtherU>::type>(value * rhs.value);
         }
 
         template <typename OtherU>
         constexpr auto operator/(const Quantity<OtherU>& rhs) const {
-            return Quantity<typename extra::DivideUnits<U, OtherU>::type>(value / rhs.value);
+            if constexpr (std::is_same_v<typename extra::DivideUnits<U, OtherU>::type, extra::Unit<>>) {
+                return value / rhs.value;
+            } else return Quantity<typename extra::DivideUnits<U, OtherU>::type>(value / rhs.value);
         }
 
         friend std::ostream& operator<<(std::ostream& os, const Quantity& q) {
-            return os << q.value;
+            os << q.value;
+            if constexpr (!std::is_same_v<U, extra::Unit<>>) {
+                os << " ";
+                extra::print_unit_impl(os, U{});
+            }
+            return os;
         }
     };
 
@@ -180,40 +191,38 @@ namespace Unit {
     }
 
     template <typename U, typename V>
-    static constexpr Quantity<U, V> operator/(long double lhs, const Quantity<U, V>& rhs) {
-        return Quantity<U, V>(lhs / rhs.value);
+    static constexpr auto operator/(long double lhs, const Quantity<U, V>& rhs) {
+        return Quantity<typename extra::InvertUnit<U>::type, V>(lhs / rhs.value);
     }
 
-    namespace std {
-        template <typename U, typename V>
-        static Quantity<U, V> abs(Quantity<U, V> q) {
-            return Quantity<U, V>(std::abs(q.value));
-        }
+    template <typename U, typename V>
+    static Quantity<U, V> abs(Quantity<U, V> q) {
+        return Quantity<U, V>(std::abs(q.value));
+    }
 
-        template <typename U, typename V>
-        static Quantity<U, V> fmod(Quantity<U, V> q) {
-            return Quantity<U, V>(std::fmod(q.value));
-        }
+    template <typename U, typename V>
+    static Quantity<U, V> fmod(Quantity<U, V> q) {
+        return Quantity<U, V>(std::fmod(q.value));
+    }
 
-        template <typename U, typename V>
-        static Quantity<U, V> sin(Quantity<U, V> q) {
-            return Quantity<U, V>(std::sin(q.value));
-        }
+    template <typename U, typename V>
+    static Quantity<U, V> sin(Quantity<U, V> q) {
+        return Quantity<U, V>(std::sin(q.value));
+    }
 
-        template <typename U, typename V>
-        static Quantity<U, V> cos(Quantity<U, V> q) {
-            return Quantity<U, V>(std::cos(q.value));
-        }
+    template <typename U, typename V>
+    static Quantity<U, V> cos(Quantity<U, V> q) {
+        return Quantity<U, V>(std::cos(q.value));
+    }
 
-        template <typename U, typename V>
-        static Quantity<U, V> tan(Quantity<U, V> q) {
-            return Quantity<U, V>(std::tan(q.value));
-        }
+    template <typename U, typename V>
+    static Quantity<U, V> tan(Quantity<U, V> q) {
+        return Quantity<U, V>(std::tan(q.value));
+    }
 
-        template <typename U, typename V>
-        static Quantity<U, V> fmod(Quantity<U, V> v1, Quantity<U, V> v2) {
-            return Quantity<U, V>(std::fmod(v1.value, v2.value));
-        }
+    template <typename U, typename V>
+    static Quantity<U, V> fmod(Quantity<U, V> v1, Quantity<U, V> v2) {
+        return Quantity<U, V>(std::fmod(v1.value, v2.value));
     }
 
     namespace defaults {
@@ -254,15 +263,15 @@ __unithpp_def_scale(femto, ret, name, f, sym)
         __unithpp_def_op_num(rad, rad)
 
         static rad sin(rad q) {
-            return rad(::std::sin(q.value));
+            return rad(std::sin(q.value));
         }
 
         static rad cos(rad q) {
-            return rad(::std::cos(q.value));
+            return rad(std::cos(q.value));
         }
 
         static rad tan(rad q) {
-            return rad(::std::tan(q.value));
+            return rad(std::tan(q.value));
         }
 
         using px = Quantity<extra::Unit<extra::Dim<"px", 1>>, unsigned>;

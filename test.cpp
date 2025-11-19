@@ -2,17 +2,16 @@
 using namespace Unit::all;
 
 int main() {
-    auto x = 10_m;
-    auto x2 = 10_dm;
-    auto y = 2_s;
-    auto z = 2_m;
-    auto m = 10_mol;
+    auto a = 2 / 10_m;
+    auto b = 2_m;
+    auto c = 2_s;
 
-
-    auto v1 = x / y;
-    auto v2 = z / y;
+    auto v1 = a / c;
+    auto v2 = b / c;
     // auto v3 = x + y; // error
-    auto v4 = x + z;
+    // auto v4 = a + b; // error
+
+    std::cout << a * b * b * b * b * c << std::endl;
 
     return 0;
 }
