@@ -76,7 +76,7 @@ int main() {
     auto t = 2.0_s;
     auto v = d / t;    // 5 m/s
 
-    std::cout << v << "\n"; // prints the numeric value
+    std::cout << v << "\n"; // prints: 5 m*s^-1
 }
 ```
 
@@ -161,18 +161,19 @@ Everything you’d expect from a modern units library — but lightweight and co
 | Literal | Meaning |
 |---------|---------|
 | `_min`  | minutes |
-| `_hour` | hours   |
+| `_hr`   | hours   |
 | `_day`  | days    |
 
 ---
 
 ## **Imperial Inputs → SI Outputs**
 
-| Literal  | Converts to |
-|----------|-------------|
-| `_mile`  | meter       |
-| `_foot`  | meter       |
-| `_pound` | gram        |
+| Literal | Base unit |
+|---------|-----------|
+| `_mi`   | meter     |
+| `_ft`   | meter     |
+| `_lb`   | gram      |
+| `_oz`   | gram      |
 
 ---
 
@@ -199,7 +200,7 @@ Everything you’d expect from a modern units library — but lightweight and co
 | watt_per_meter_kelvin | `watt / (meter * kelvin)` |
 | pascal_second         | `pascal * second`         |
 | becquerel             | `1 / second`              |
-| celsius literal       | `_celsius` → kelvin       |
+| celsius literal       | `_degC` → kelvin          |
 
 ---
 
@@ -249,10 +250,13 @@ auto c = cos(b);
 
 # **Printing**
 
-By default, printing a quantity prints its **value only**:
+The library includes an automatic unit formatter. When you print a quantity, it outputs the value followed by the
+simplified unit breakdown.
 
 ```cpp
-std::cout << 5.0_m << "\n";   // prints: 5
+std::cout << 10.0_m << "\n";             // prints: 10 m
+std::cout << 10.0_N << "\n";             // prints: 10 kg*m*s^-2
+std::cout << 5.0_m * 5.0_m << "\n";      // prints: 25 m^2
 ```
 
 Add your own formatting helpers if you want unit symbols.
@@ -294,7 +298,7 @@ int main() {
     auto a = 90.0_deg;       // radians
     auto y = sin(a);
 
-    std::cout << "Speed: " << v << " m/s\n";
-    std::cout << "sin(90°): " << y << "\n";
+    std::cout << "Speed: " << v << std::endl;
+    std::cout << "sin(90°): " << y << std::endl;
 }
 ```

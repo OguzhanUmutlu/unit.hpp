@@ -1,17 +1,19 @@
 #include "Unit.hpp"
 using namespace Unit::all;
 
+int add(int x, int y) {
+    return x + y;
+}
+
+template <auto fn>
+int test(int x, int y) {
+    return fn(x, y);
+}
+
 int main() {
-    auto a = 2 / 10_m;
-    auto b = 2_m;
-    auto c = 2_s;
-
-    auto v1 = a / c;
-    auto v2 = b / c;
-    // auto v3 = x + y; // error
-    // auto v4 = a + b; // error
-
-    std::cout << a * b * b * b * b * c << std::endl;
+    std::cout << test<add>(1, 2) << std::endl;
+    //using t = deci<decltype(10_dm * 10_dm * 10_dm)>;
+    //std::cout << 10.0_N << "\n";             // prints: 10 kg*m*s^-2
 
     return 0;
 }
