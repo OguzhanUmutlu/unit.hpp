@@ -8,7 +8,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 8;
+static constexpr int UNIT_HPP_VERSION_MINOR = 9;
 
 namespace Unit {
     using float_t = double;
@@ -468,6 +468,8 @@ namespace Unit {
         constexpr auto operator-(const Quantity& rhs) const {
             return Quantity(value - rhs.value);
         }
+
+        constexpr auto operator<=>(const Quantity& rhs) const = default;
     };
 
     template <FixedString Sym, int Exp = 1>
@@ -531,8 +533,8 @@ namespace Unit {
         template <typename Q, int E = 1> using exa   = scaled_unit_q<Q, "E", std::exa, E>;
 
 #define __unithpp_literal_(TYPE, SYM) \
-        static auto operator ""_##SYM(long double val) { return TYPE(static_cast<float_t>(val)); } \
-        static auto operator ""_##SYM(unsigned long long val) { return TYPE(static_cast<float_t>(val)); }
+        constexpr auto operator ""_##SYM(long double val) { return TYPE(static_cast<float_t>(val)); } \
+        constexpr auto operator ""_##SYM(unsigned long long val) { return TYPE(static_cast<float_t>(val)); }
 #define __unithpp_literal(TYPE) __unithpp_literal_(TYPE, TYPE)
 #define __unithpp_scales(UNIT) \
     __unithpp_literal_(atto<UNIT>, a##UNIT) \
@@ -653,19 +655,19 @@ namespace Unit {
 #undef __unithpp_literals
 #undef __unithpp_scales
 
-        static auto operator ""_degC(long double val) {
+        constexpr auto operator ""_degC(long double val) {
             return K(static_cast<float_t>(val) + 273.15);
         }
 
-        static auto operator ""_degC(unsigned long long val) {
+        constexpr auto operator ""_degC(unsigned long long val) {
             return K(static_cast<float_t>(val) + 273.15);
         }
 
-        static auto operator ""_degF(long double val) {
+        constexpr auto operator ""_degF(long double val) {
             return K(static_cast<float_t>((val - 32) * 5 / 9 + 273.15));
         }
 
-        static auto operator ""_degF(unsigned long long val) {
+        constexpr auto operator ""_degF(unsigned long long val) {
             return K((val - 32) * 5 / 9 + 273.15);
         }
 

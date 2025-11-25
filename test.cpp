@@ -17,6 +17,8 @@ int main() {
     auto distance = 60.0_mi;
     auto time     = 1.0_hour;
 
+    std::cout << (1_m == 5_m) << std::endl;
+
     // The type of 'speed' is automatically deduced.
     // It infers a compound unit: mi * hour^-1
     auto speed = distance / time;
