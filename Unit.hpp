@@ -8,7 +8,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 6;
+static constexpr int UNIT_HPP_VERSION_MINOR = 7;
 
 namespace Unit {
     using float_t = double;
@@ -551,7 +551,7 @@ namespace Unit {
         using A   = base_unit_q<"A">;
         using cd  = base_unit_q<"cd">;
         using rad = base_unit_q<"rad">;
-        using px  = base_unit_q<"px">;
+        using px  = Quantity<base_unit<"px">, unsigned>;
 
         using L      = compound_unit_q<deci<m, 3>, "L">;
         using deg    = compound_unit_q<rad, "deg", std::ratio<17453292519943296, 1000000000000000000>>;
