@@ -1,541 +1,611 @@
 #pragma once
 
 #include <iostream>
+#include <tuple>
+#include <type_traits>
 #include <algorithm>
+#include <cmath>
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 3;
+static constexpr int UNIT_HPP_VERSION_MINOR = 4;
 
 namespace Unit {
     using float_t = double;
 
-    template <typename ThisUnit, typename ThisValue = float_t>
-    struct Quantity;
+    template <size_t N>
+    struct FixedString {
+        char buf[N]{};
 
-    namespace extra {
-        static constexpr float_t pi = 3.14159265358979323846;
-
-        constexpr float_t ipow(float_t base, int exp) {
-            float_t res = 1.0;
-            if (exp < 0) {
-                base = 1.0 / base;
-                exp = -exp;
-            }
-            while (exp > 0) {
-                if (exp % 2 == 1) res *= base;
-                base *= base;
-                exp /= 2;
-            }
-            return res;
+        // ReSharper disable once CppNonExplicitConvertingConstructor
+        constexpr FixedString(const char (&str)[N]) {
+            std::copy_n(str, N, buf);
         }
 
-        template <size_t N>
-        struct FixedString {
-            char buf[N]{};
-
-            // ReSharper disable once CppNonExplicitConvertingConstructor
-            constexpr FixedString(const char (&str)[N]) {
-                std::copy_n(str, N, buf);
-            }
-
-            constexpr FixedString(const char* str, size_t n) {
-                std::copy_n(str, n, buf);
-            }
-
-            friend auto operator<=>(const FixedString&, const FixedString&) = default;
-
-            friend bool operator==(const FixedString&, const FixedString&) = default;
-
-            constexpr bool empty() const {
-                return buf[0] == '\0';
-            }
-        };
-
-        template <size_t N>
-        FixedString(const char (&)[N]) -> FixedString<N>;
-
-        template <typename T>
-        static constexpr T return_self(T v) {
-            return v;
+        constexpr FixedString(const char* str, size_t n) {
+            std::copy_n(str, n, buf);
         }
 
-        // BaseSymbol = The base unit symbol, e.g., "m" for meter and even for mile
-        // Exponent = The exponent of the base unit in the compound unit, e.g., 2 for m^2
-        // ScaleRatio = The scaling ratio, like milli = 1/1000 etc. Default is 1 (no scaling)
-        // Prefix = The prefix symbol for the base unit, e.g., "k" for kilo
-        // SubSymbol = The sub-symbol for the base unit, e.g., "mi" for mile
-        // SubToBase = The formula for converting the subunit to the base unit
-        // BaseToSub = The formula for converting the base unit to the subunit
+        friend auto operator<=>(const FixedString&, const FixedString&) = default;
 
-        // For kilomile: BaseUnit<"m", 1, std::ratio<1000>, "k", "mi", mile_to_meter, meter_to_mile>
-        template <FixedString BaseSymbol, int Exponent = 1,
-                  typename ScaleRatio = std::ratio<1>, FixedString Prefix = "",
-                  FixedString SubSymbol = BaseSymbol, auto SubToBase = return_self<float_t>,
-                  auto BaseToSub = return_self<float_t>>
-        struct BaseUnit {
-            static constexpr auto base_symbol = BaseSymbol;
-            static constexpr auto exp = Exponent;
-            static constexpr auto sub_symbol = SubSymbol;
-            static constexpr auto prefix = Prefix;
-            using scale = ScaleRatio;
-        };
-
-        template <typename... _>
-        struct Unit {
-        };
-
-        template <typename T>
-        struct is_single_unit : std::false_type {
-        };
-
-        template <typename Base>
-        struct is_single_unit<Unit<Base>> : std::true_type {
-            using base_type = Base;
-        };
-
-        template <typename BaseUnit>
-        void print_base_unit(std::ostream& os) {
-            if constexpr (BaseUnit::exp == 0) return;
-            os << BaseUnit::prefix.buf << BaseUnit::sub_symbol.buf;
-            if constexpr (BaseUnit::exp != 1) {
-                os << "^" << BaseUnit::exp;
-            }
+        template <size_t M> constexpr bool operator==(const FixedString<M>& rhs) const {
+            if constexpr (N != M) return false;
+            for (size_t i = 0; i < N; ++i) if (buf[i] != rhs.buf[i]) return false;
+            return true;
         }
 
-        template <typename... BaseUnits>
-        void print_unit_impl(std::ostream& os, Unit<BaseUnits...>) {
-            size_t n = 0;
-            ((print_base_unit<BaseUnits>(os), (++n < sizeof...(BaseUnits) ? os << "*" : os)), ...);
+        template <size_t M> constexpr auto operator+(const FixedString<M>& rhs) const {
+            char combined_buf[N + M - 1]{};
+            std::copy_n(buf, N - 1, combined_buf);
+            std::copy_n(rhs.buf, M, combined_buf + N - 1);
+            return FixedString<N + M - 1>(combined_buf, N + M - 1);
         }
 
-        template <typename T, typename U>
-        struct PrependBaseUnit;
-
-        template <typename HeadBaseUnit, typename... TailBaseUnits>
-        struct PrependBaseUnit<HeadBaseUnit, Unit<TailBaseUnits...>> {
-            using type = Unit<HeadBaseUnit, TailBaseUnits...>;
-        };
-
-        template <typename NewBaseUnit, typename CurrentUnit>
-        struct MultiplyBaseUnitByUnit;
-
-        template <typename BaseUnitA>
-        struct MultiplyBaseUnitByUnit<BaseUnitA, Unit<>> {
-            using type = Unit<BaseUnitA>;
-        };
-
-        template <FixedString BaseSymbol, int Exponent1, int Exponent2, typename Scale, FixedString Prefix,
-                  FixedString SubSymbol, auto SubToBase, auto BaseToSub, typename... Rest>
-        struct MultiplyBaseUnitByUnit<
-                BaseUnit<BaseSymbol, Exponent1, Scale, Prefix, SubSymbol, SubToBase, BaseToSub>,
-                Unit<BaseUnit<BaseSymbol, Exponent2, Scale, Prefix, SubSymbol, SubToBase, BaseToSub>, Rest...>
-            > {
-            static constexpr int sum = Exponent1 + Exponent2;
-            using type = std::conditional_t<
-                sum == 0,
-                Unit<Rest...>,
-                Unit<BaseUnit<BaseSymbol, sum, Scale, Prefix, SubSymbol, SubToBase, BaseToSub>, Rest...>
-            >;
-        };
-
-        template <typename BaseUnitA, typename Head, typename... Tail>
-        struct MultiplyBaseUnitByUnit<BaseUnitA, Unit<Head, Tail...>> {
-            using type = PrependBaseUnit<Head, typename MultiplyBaseUnitByUnit<BaseUnitA, Unit<Tail...>>::type>::type;
-        };
-
-        template <typename UnitA, typename UnitB>
-        struct MultiplyUnits;
-
-        template <typename UnitA>
-        struct MultiplyUnits<UnitA, Unit<>> {
-            using type = UnitA;
-        };
-
-        template <typename _Unit, typename HeadBaseUnit, typename... TailBaseUnits>
-        struct MultiplyUnits<_Unit, Unit<HeadBaseUnit, TailBaseUnits...>> {
-            using type = MultiplyUnits<typename MultiplyBaseUnitByUnit<HeadBaseUnit, _Unit>::type, Unit<TailBaseUnits
-                                           ...>>::type;
-        };
-
-        template <typename D>
-        struct InvertBaseUnit;
-
-        template <FixedString BaseSymbol, int Exponent, typename Scale, FixedString Prefix,
-                  FixedString SubSymbol, auto SubToBase, auto BaseToSub>
-        struct InvertBaseUnit<BaseUnit<BaseSymbol, Exponent, Scale, Prefix, SubSymbol, SubToBase, BaseToSub>> {
-            using type = BaseUnit<BaseSymbol, -Exponent, Scale, Prefix, SubSymbol, SubToBase, BaseToSub>;
-        };
-
-        template <typename U>
-        struct InvertUnit;
-
-        template <>
-        struct InvertUnit<Unit<>> {
-            using type = Unit<>;
-        };
-
-        template <typename Head, typename... Tail>
-        struct InvertUnit<Unit<Head, Tail...>> {
-            using type = PrependBaseUnit<typename InvertBaseUnit<Head>::type, typename InvertUnit<Unit<Tail
-                                             ...>>::type>::type;
-        };
-
-        template <typename UnitA, typename UnitB>
-        struct DivideUnits {
-            using type = MultiplyUnits<UnitA, typename InvertUnit<UnitB>::type>::type;
-        };
-
-        template <typename T, typename Scalar, FixedString NewPrefix>
-        struct ApplyScale {
-            static_assert(sizeof(T) == 0,
-                          "Error: Prefix scaling (e.g., atto<T>) can only be applied to a simple Base Unit with Exponent 1 (e.g., meter, gram). "
-                          "Compound units (kg*m) or powers (m^2) are not allowed.");
-        };
-
-        template <FixedString BaseSymbol, typename OldScale,
-                  FixedString SubSymbol, auto SubToBase, auto BaseToSub,
-                  typename ValueType, typename Scalar, FixedString NewPrefix>
-        struct ApplyScale<
-                Quantity<Unit<BaseUnit<BaseSymbol, 1, OldScale, "", SubSymbol, SubToBase, BaseToSub>>, ValueType>,
-                Scalar,
-                NewPrefix
-            > {
-            static_assert(std::is_same_v<OldScale, std::ratio<1>>,
-                          "Error: Compound prefixes (e.g., deci<deci<meter>>) are not allowed by SI rules. "
-                          "Use the correct combined prefix (e.g., centi<meter>) instead.");
-            using NewScale = std::ratio_multiply<OldScale, Scalar>;
-            using type = Quantity<Unit<BaseUnit<BaseSymbol, 1, NewScale, NewPrefix, SubSymbol, SubToBase, BaseToSub>>,
-                                  ValueType>;
-        };
-    }
-
-    template <typename ThisUnit, typename ThisValue>
-    struct Quantity {
-        ThisValue raw_value;
-
-        using UnitType = ThisUnit;
-
-        constexpr Quantity() : raw_value(0) {
-        }
-
-        explicit constexpr Quantity(ThisValue v) : raw_value(v) {
-        }
-
-        template <typename OtherUnit, typename OtherValue>
-            requires (
-                extra::is_single_unit<ThisUnit>::value
-                && extra::is_single_unit<OtherUnit>::value
-                && (extra::is_single_unit<ThisUnit>::base_type::base_symbol
-                    == extra::is_single_unit<OtherUnit>::base_type::base_symbol)
-                && (extra::is_single_unit<ThisUnit>::base_type::exp
-                    == extra::is_single_unit<OtherUnit>::base_type::exp)
-            )
-        explicit constexpr Quantity(const Quantity<OtherUnit, OtherValue>& rhs) {
-            using TargetBase = extra::is_single_unit<ThisUnit>::base_type;
-            using SourceBase = extra::is_single_unit<OtherUnit>::base_type;
-            using SourceFactor = std::ratio_multiply<typename SourceBase::scale, typename SourceBase::sub_ratio>;
-            using TargetFactor = std::ratio_multiply<typename TargetBase::scale, typename TargetBase::sub_ratio>;
-            using Conversion = std::ratio_divide<SourceFactor, TargetFactor>;
-            constexpr float_t factor = static_cast<float_t>(Conversion::num) / static_cast<float_t>(Conversion::den);
-            raw_value = static_cast<ThisValue>(rhs.raw_value * extra::ipow(factor, TargetBase::exp));
-        }
-
-        constexpr ThisValue operator*() const {
-            return raw_value;
-        }
-
-        constexpr auto operator*(long double rhs) const {
-            return Quantity(raw_value * rhs);
-        }
-
-        constexpr auto operator/(long double rhs) const {
-            return Quantity(raw_value / rhs);
-        }
-
-        constexpr Quantity operator+(const Quantity& rhs) const {
-            return Quantity(raw_value + rhs.raw_value);
-        }
-
-        constexpr Quantity operator-(const Quantity& rhs) const {
-            return Quantity(raw_value - rhs.raw_value);
-        }
-
-        constexpr Quantity operator-() const {
-            return Quantity(-raw_value);
-        }
-
-        template <typename OtherUnit>
-        constexpr auto operator*(const Quantity<OtherUnit>& rhs) const {
-            using ResultUnit = extra::MultiplyUnits<ThisUnit, OtherUnit>::type;
-            if constexpr (std::is_same_v<ResultUnit, extra::Unit<>>) {
-                return raw_value * rhs.raw_value;
-            } else return Quantity<ResultUnit>(raw_value * rhs.raw_value);
-        }
-
-        template <typename OtherUnit>
-        constexpr auto operator/(const Quantity<OtherUnit>& rhs) const {
-            if constexpr (std::is_same_v<typename extra::DivideUnits<ThisUnit, OtherUnit>::type, extra::Unit<>>) {
-                return raw_value / rhs.raw_value;
-            } else return Quantity<typename extra::DivideUnits<ThisUnit, OtherUnit>::type>(raw_value / rhs.raw_value);
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const Quantity& q) {
-            os << q.raw_value;
-            if constexpr (!std::is_same_v<ThisUnit, extra::Unit<>>) {
-                os << " ";
-                extra::print_unit_impl(os, ThisUnit{});
-            }
-            return os;
+        constexpr bool empty() const {
+            return buf[0] == '\0';
         }
     };
 
-    template <typename U, typename V>
-    static constexpr Quantity<U, V> operator*(long double lhs, const Quantity<U, V>& rhs) {
-        return Quantity<U, V>(lhs * rhs.raw_value);
+    template <size_t N> std::ostream& operator<<(std::ostream& os, const FixedString<N>& fs) {
+        return os << fs.buf;
     }
 
-    template <typename U, typename V>
-    static constexpr auto operator/(long double lhs, const Quantity<U, V>& rhs) {
-        return Quantity<typename extra::InvertUnit<U>::type, V>(lhs / rhs.raw_value);
+    template <size_t N> FixedString(const char (&)[N]) -> FixedString<N>;
+
+    template <FixedString Symbol>
+    struct BaseUnit;
+
+    template <typename Tpl, int Exponent = 1, FixedString Symbol = "", typename Ratio = std::ratio<1>>
+    struct Unit;
+
+    template <typename ThisUnit, typename ValueType = float_t>
+    struct Quantity;
+
+    template <typename T> struct is_base_unit : std::false_type {
+    };
+
+    template <FixedString S> struct is_base_unit<BaseUnit<S>> : std::true_type {
+    };
+
+    template <typename T> struct is_unit : std::false_type {
+    };
+
+    template <typename Tpl, int E, FixedString S, typename R>
+    struct is_unit<Unit<Tpl, E, S, R>> : std::true_type {
+    };
+
+    template <typename T> struct get_exponent {
+        static constexpr int value = 1;
+    };
+
+    template <typename Tpl, int E, FixedString S, typename R>
+    struct get_exponent<Unit<Tpl, E, S, R>> {
+        static constexpr int value = E;
+    };
+
+    template <typename T> struct get_symbol;
+
+    template <FixedString S>
+    struct get_symbol<BaseUnit<S>> {
+        static constexpr auto value = S;
+    };
+
+    template <typename Tpl, int E, FixedString S, typename R>
+    struct get_symbol<Unit<Tpl, E, S, R>> {
+        static constexpr auto value = []() {
+            if constexpr (!S.empty()) {
+                return S;
+            } else if constexpr (std::tuple_size_v<Tpl> == 1 && E == 1) {
+                return get_symbol<std::tuple_element_t<0, Tpl>>::value;
+            } else {
+                return FixedString("");
+            }
+        }();
+    };
+
+    constexpr float_t ipow(float_t base, int exp) {
+        float_t res = 1.0;
+        if (exp < 0) {
+            base = 1.0 / base;
+            exp  = -exp;
+        }
+        while (exp > 0) {
+            if (exp % 2 == 1) res *= base;
+            base *= base;
+            exp /= 2;
+        }
+        return res;
     }
 
-#define __unithpp_bring_math_func(NAME) \
-    template <typename U, typename V> \
-    static Quantity<U, V> NAME(Quantity<U, V> q) { \
-        return Quantity<U, V>(std::NAME(q.raw_value)); \
+    static constexpr float_t pi = 3.14159265358979323846;
+
+    template <FixedString Symbol>
+    struct BaseUnit {
+        static constexpr auto Sym = Symbol;
+    };
+
+    template <typename Tpl, int Exponent, FixedString Symbol, typename Ratio>
+    struct Unit {
+        using Units               = Tpl;
+        static constexpr int Exp  = Exponent;
+        static constexpr auto Sym = Symbol;
+        using R                   = Ratio;
+    };
+
+    template <typename T>
+    constexpr float_t get_unit_scale();
+
+    template <typename Tuple>
+    constexpr float_t tuple_scale_product() {
+        constexpr size_t N = std::tuple_size_v<Tuple>;
+        if constexpr (N == 0) return 1.0;
+        else {
+            return []<size_t... I>(std::index_sequence<I...>) {
+                return (... * get_unit_scale<std::tuple_element_t<I, Tuple>>());
+            }(std::make_index_sequence<N>{});
+        }
     }
 
-    __unithpp_bring_math_func(abs)
-    __unithpp_bring_math_func(fmod)
-    __unithpp_bring_math_func(log)
-    __unithpp_bring_math_func(log2)
-    __unithpp_bring_math_func(log10)
-    __unithpp_bring_math_func(pow)
-    __unithpp_bring_math_func(sqrt)
-    __unithpp_bring_math_func(cbrt)
+    template <typename T>
+    constexpr float_t get_unit_scale() {
+        if constexpr (is_base_unit<T>::value) {
+            return 1.0;
+        } else {
+            float_t inner = tuple_scale_product<typename T::Units>();
+            return ipow(inner * (static_cast<float_t>(T::R::num) / static_cast<float_t>(T::R::den)), T::Exp);
+        }
+    }
 
-#define __unithpp_SCALE(NAME, SYMBOL) \
-template <typename Q> \
-using NAME = typename Unit::extra::ApplyScale<Q, std::NAME, #SYMBOL>::type;
-#define __unithpp_LITERAL(NAME, SHORT) \
-namespace literals { \
-    constexpr NAME operator ""_##SHORT(long double x) { \
-        return NAME(x); \
-    } \
-    constexpr NAME operator ""_##SHORT(unsigned long long x) { \
-        return NAME(static_cast<float_t>(x)); \
-    } \
-}
-#define __unithpp_BASE_NOSCALE(NAME, SHORT) \
-using NAME = Quantity<extra::Unit<extra::BaseUnit<#SHORT>>>; \
-__unithpp_LITERAL(NAME, SHORT)
-#define __unithpp_BASE(NAME, SHORT) \
-__unithpp_BASE_NOSCALE(NAME, SHORT) \
-__unithpp_SCALES(NAME, SHORT)
+    template <typename T>
+    constexpr void print_unit(std::ostream& os) {
+        if constexpr (is_base_unit<T>::value) {
+            os << T::Sym;
+        } else {
+            if constexpr (!T::Sym.empty()) {
+                os << T::Sym;
+            } else {
+                constexpr size_t N = std::tuple_size_v<T::Units>;
 
-#define __unithpp_SUB(NAME, ORIGIN, SUB_SYMBOL, SUB_TO_BASE, BASE_TO_SUB) \
-__unithpp_SUB_NOSCALE(NAME, ORIGIN, SUB_SYMBOL, SUB_TO_BASE, BASE_TO_SUB) \
-__unithpp_SCALES(NAME, SUB_SYMBOL)
-#define __unithpp_SUB_NOSCALE(NAME, ORIGIN, SUB_SYMBOL, SUB_TO_BASE, BASE_TO_SUB) \
-namespace temp_functions { \
-    constexpr float_t __s2b__##NAME(float_t x) SUB_TO_BASE \
-    constexpr float_t __b2s__##NAME(float_t x) BASE_TO_SUB \
-} \
-using NAME = Quantity<extra::Unit<extra::BaseUnit<#ORIGIN, 1, std::ratio<1>, "", #SUB_SYMBOL, temp_functions::__s2b__##NAME, temp_functions::__b2s__##NAME>>>; \
-__unithpp_LITERAL(NAME, SUB_SYMBOL)
-#define __unithpp_SUB_RATIO(NAME, ORIGIN, SUB_SYMBOL, NUM, DEN) \
-__unithpp_SUB_RATIO_NOSCALE(NAME, ORIGIN, SUB_SYMBOL, NUM, DEN) \
-__unithpp_SCALES(NAME, SUB_SYMBOL)
-#define __unithpp_SUB_RATIO_NOSCALE(NAME, ORIGIN, SUB_SYMBOL, NUM, DEN) \
-__unithpp_SUB_NOSCALE(NAME, ORIGIN, SUB_SYMBOL, { \
-    return static_cast<float_t>(NUM) / static_cast<float_t>(DEN) * x; \
-}, { \
-    return static_cast<float_t>(DEN) / static_cast<float_t>(NUM) * x; \
-})
+                if constexpr (N > 0) {
+                    [&]<size_t... I>(std::index_sequence<I...>) {
+                        size_t idx = 0;
+                        ((print_unit<std::tuple_element_t<I, T::Units>>(os), (++idx < N ? os << "*" : os)), ...);
+                    }(std::make_index_sequence<N>{});
+                }
+            }
+            if constexpr (T::Exp != 1) {
+                os << "^" << T::Exp;
+            }
+        }
+    }
 
-#define __unithpp_COMPOUND(NAME, SHORT, FORMULA) \
-using NAME = decltype(FORMULA); \
-__unithpp_LITERAL(NAME, SHORT)
+    template <typename T1, typename T2> struct tuple_cat_type;
+    template <typename T1, typename T2> using tuple_cat_type_t = tuple_cat_type<T1, T2>::type;
 
-#define __unithpp_SCALES(NAME, SHORT) \
-__unithpp_LITERAL(atto<NAME>, a##SHORT) \
-__unithpp_LITERAL(femto<NAME>, f##SHORT) \
-__unithpp_LITERAL(pico<NAME>, p##SHORT) \
-__unithpp_LITERAL(nano<NAME>, n##SHORT) \
-__unithpp_LITERAL(micro<NAME>, μ##SHORT) \
-__unithpp_LITERAL(milli<NAME>, m##SHORT) \
-__unithpp_LITERAL(centi<NAME>, c##SHORT) \
-__unithpp_LITERAL(deci<NAME>, d##SHORT) \
-__unithpp_LITERAL(deca<NAME>, da##SHORT) \
-__unithpp_LITERAL(hecto<NAME>, h##SHORT) \
-__unithpp_LITERAL(kilo<NAME>, k##SHORT) \
-__unithpp_LITERAL(mega<NAME>, M##SHORT) \
-__unithpp_LITERAL(giga<NAME>, G##SHORT) \
-__unithpp_LITERAL(tera<NAME>, T##SHORT) \
-__unithpp_LITERAL(peta<NAME>, P##SHORT) \
-__unithpp_LITERAL(exa<NAME>, E##SHORT)
+    template <typename... Ts1, typename... Ts2>
+    struct tuple_cat_type<std::tuple<Ts1...>, std::tuple<Ts2...>> {
+        using type = std::tuple<Ts1..., Ts2...>;
+    };
 
-    __unithpp_SCALE(atto, a)
-    __unithpp_SCALE(femto, f)
-    __unithpp_SCALE(pico, p)
-    __unithpp_SCALE(nano, n)
-    __unithpp_SCALE(micro, μ)
-    __unithpp_SCALE(milli, m)
-    __unithpp_SCALE(centi, c)
-    __unithpp_SCALE(deci, d)
-    __unithpp_SCALE(deca, da)
-    __unithpp_SCALE(hecto, h)
-    __unithpp_SCALE(kilo, k)
-    __unithpp_SCALE(mega, M)
-    __unithpp_SCALE(giga, G)
-    __unithpp_SCALE(tera, T)
-    __unithpp_SCALE(peta, P)
-    __unithpp_SCALE(exa, E)
+    template <typename U, int InheritedExp> struct flatten;
+    template <typename U, int InheritedExp> using flatten_t = flatten<U, InheritedExp>::type;
 
-    namespace defaults {
-        __unithpp_BASE(meter, m)
+    template <typename Tuple, int ParentExp> struct flatten_tuple;
+    template <typename Tuple, int ParentExp> using flatten_tuple_t = flatten_tuple<Tuple, ParentExp>::type;
 
-        __unithpp_BASE(gram, g)
+    template <typename... Ts, int ParentExp>
+    struct flatten_tuple<std::tuple<Ts...>, ParentExp> {
+        using type = decltype(std::tuple_cat(flatten_t<Ts, ParentExp>{}...));
+    };
 
-        __unithpp_BASE(second, s)
+    template <FixedString S, int InheritedExp>
+    struct flatten<BaseUnit<S>, InheritedExp> {
+        using type = std::tuple<Unit<std::tuple<BaseUnit<S>>, InheritedExp>>;
+    };
 
-        __unithpp_BASE(ampere, A)
+    template <typename Tpl, int Exp, FixedString Sym, typename R, int InheritedExp>
+    struct flatten<Unit<Tpl, Exp, Sym, R>, InheritedExp> {
+        static constexpr int EffectiveExp = Exp * InheritedExp;
+        using ThisUnit                    = Unit<Tpl, Exp, Sym, R>;
 
-        __unithpp_BASE(kelvin, K)
+        using type = std::conditional_t<
+            !Sym.empty(),
+            std::tuple<Unit<std::tuple<ThisUnit>, EffectiveExp>>,
+            flatten_tuple_t<Tpl, EffectiveExp>
+        >;
+    };
 
-        __unithpp_BASE(mole, mol)
+    template <typename Term1, typename Term2>
+    struct is_same_basis {
+        using B1                    = std::tuple_element_t<0, typename Term1::Units>;
+        using B2                    = std::tuple_element_t<0, typename Term2::Units>;
+        static constexpr bool value = std::is_same_v<B1, B2>;
+    };
 
-        __unithpp_BASE(candela, cd)
+    template <typename Term, int ExtraExp>
+    struct add_exp_to_term {
+        using Basis                 = std::tuple_element_t<0, typename Term::Units>;
+        static constexpr int OldExp = Term::Exp;
+        using type                  = Unit<std::tuple<Basis>, OldExp + ExtraExp>;
+    };
 
-        __unithpp_BASE_NOSCALE(radians, rad) // special useful unit
+    template <typename Term, int ExtraExp> using add_exp_to_term_t = add_exp_to_term<Term, ExtraExp>::type;
 
-        __unithpp_BASE_NOSCALE(pixels, px) // special useful unit
+    template <typename Term1, typename Term2>
+    struct term_less {
+        using B1 = std::tuple_element_t<0, typename Term1::Units>;
+        using B2 = std::tuple_element_t<0, typename Term2::Units>;
 
-        __unithpp_COMPOUND(liter, L, deci<meter>{} * deci<meter>{} * deci<meter>{})
+        static constexpr bool value = []() {
+            constexpr auto s1       = B1::Sym;
+            constexpr auto s2       = B2::Sym;
+            constexpr size_t N1     = sizeof(s1.buf);
+            constexpr size_t N2     = sizeof(s2.buf);
+            constexpr size_t common = (N1 < N2) ? N1 : N2;
 
-        __unithpp_COMPOUND(meter_per_second, mps, meter{} / second{})
+            for (size_t i = 0; i < common; ++i) {
+                if (s1.buf[i] != s2.buf[i]) {
+                    return s1.buf[i] < s2.buf[i];
+                }
+            }
+            return N1 < N2;
+        }();
+    };
 
-        __unithpp_COMPOUND(square_meter, m2, meter{} * meter{})
+    template <typename AccumTuple, typename Term> struct merge_one;
+    template <typename AccumTuple, typename Term> using merge_one_t = merge_one<AccumTuple, Term>::type;
 
-        __unithpp_COMPOUND(cubic_meter, m3, meter{} * meter{} * meter{})
+    template <typename Term>
+    struct merge_one<std::tuple<>, Term> {
+        using type = std::tuple<Term>;
+    };
 
-        __unithpp_COMPOUND(meter_per_second_squared, mps2, meter{} / (second{} * second{}))
+    template <typename Head, typename... Tail, typename Term>
+    struct merge_one<std::tuple<Head, Tail...>, Term> {
+        using type = std::conditional_t<
+            is_same_basis<Head, Term>::value,
+            std::tuple<add_exp_to_term_t<Head, Term::Exp>, Tail...>,
+            std::conditional_t<
+                term_less<Term, Head>::value,
+                std::tuple<Term, Head, Tail...>,
+                tuple_cat_type_t<std::tuple<Head>, typename merge_one<std::tuple<Tail...>, Term>::type>
+            >
+        >;
+    };
 
-        __unithpp_COMPOUND(rad_per_second, rads, radians{} / second{})
+    template <typename Accum, typename Remaining> struct merge_all;
+    template <typename Accum, typename Remaining> using merge_all_t = merge_all<Accum, Remaining>::type;
 
-        __unithpp_COMPOUND(rad_per_second_squared, rads2, radians{} / (second{} * second{}))
+    template <typename Accum>
+    struct merge_all<Accum, std::tuple<>> {
+        using type = Accum;
+    };
 
-        __unithpp_SUB_RATIO(mile, m, mi, 1609344, 1000)
+    template <typename Accum, typename Head, typename... Tail>
+    struct merge_all<Accum, std::tuple<Head, Tail...>> {
+        using NextAccum = merge_one_t<Accum, Head>;
+        using type      = merge_all_t<NextAccum, std::tuple<Tail...>>;
+    };
 
-        __unithpp_SUB_RATIO(foot, m, ft, 3048, 10000)
+    template <typename Tuple> struct filter_zero;
+    template <typename Tuple> using filter_zero_t = filter_zero<Tuple>::type;
 
-        __unithpp_SUB_RATIO(pound, g, lb, 45359237, 100000)
+    template <> struct filter_zero<std::tuple<>> {
+        using type = std::tuple<>;
+    };
 
-        __unithpp_SUB_RATIO(ounce, g, oz, 28349523125, 1000000000)
+    template <typename Head, typename... Tail>
+    struct filter_zero<std::tuple<Head, Tail...>> {
+        using TailFiltered = filter_zero_t<std::tuple<Tail...>>;
+        using type         = std::conditional_t<
+            Head::Exp == 0,
+            TailFiltered,
+            tuple_cat_type_t<std::tuple<Head>, TailFiltered>
+        >;
+    };
 
-        __unithpp_SUB_RATIO(minute, s, min, 60, 1)
+    template <typename Tuple> struct reconstruct {
+        using type = Unit<Tuple>;
+    };
 
-        __unithpp_SUB_RATIO(hour, s, hr, 3600, 1)
+    template <typename Tuple> using reconstruct_t = reconstruct<Tuple>::type;
 
-        __unithpp_SUB_RATIO(day, s, day, 86400, 1)
+    template <typename SingleTerm>
+    struct reconstruct<std::tuple<SingleTerm>> {
+        using type = SingleTerm;
+    };
 
-        __unithpp_SUB_RATIO(degrees, rad, deg, 3141592653589793238, 180000000000000000)
+    template <typename U1, typename U2, int Sign>
+    struct binary_op_result {
+        using Terms1   = flatten_t<U1, 1>;
+        using Terms2   = flatten_t<U2, Sign>;
+        using Combined = tuple_cat_type_t<Terms1, Terms2>;
+        using Merged   = merge_all_t<std::tuple<>, Combined>;
+        using Filtered = filter_zero_t<Merged>;
+        using type     = reconstruct_t<Filtered>;
+    };
 
-        __unithpp_SUB_RATIO(gradians, rad, grad, 3141592653589793238, 200000000000000000)
+    template <typename U1, typename U2, int Sign> using binary_op_result_t = binary_op_result<U1, U2, Sign>::type;
 
-        __unithpp_COMPOUND(mile_per_second, mips, mile{} / second{})
+    template <typename ThisUnit, typename ValueType>
+    struct Quantity {
+        using u = ThisUnit;
+        ValueType value;
 
-        __unithpp_COMPOUND(foot_per_second, ftps, foot{} / second{})
-
-        // Mechanics
-        __unithpp_COMPOUND(hertz, Hz, 1 / second{})
-
-        __unithpp_COMPOUND(newton, N, kilo<gram>{} * meter{} / (second{} * second{}))
-
-        __unithpp_COMPOUND(pascal, Pa, newton{} / (meter{} * meter{}))
-
-        __unithpp_COMPOUND(joule, J, newton{} * meter{})
-
-        __unithpp_COMPOUND(watt, W, joule{} / second{})
-
-        __unithpp_COMPOUND(kilogram_per_cubic_meter, kg_per_m3, kilo<gram>{} / (meter{} * meter{} * meter{}))
-
-        __unithpp_COMPOUND(newton_meter, N_m, newton{} * meter{})
-
-        __unithpp_COMPOUND(dyne, dyn, gram{} * centi<meter>{} / (second{} * second{}))
-
-        // Thermodynamics
-        __unithpp_COMPOUND(joule_per_kelvin, JpK, joule{} / kelvin{})
-
-        __unithpp_COMPOUND(watt_per_meter_kelvin, WpMK, watt{} / (meter{} * kelvin{}))
-
-        __unithpp_COMPOUND(pascal_second, Pa_s, pascal{} * second{})
-
-        __unithpp_COMPOUND(becquerel, Bq, 1 / second{})
-
-        __unithpp_SUB(celsius, kelvin, degC, { return x + 273.15; }, { return x - 273.15; })
-
-        // Electromagnetism
-        __unithpp_COMPOUND(coulomb, C, ampere{} * second{})
-
-        __unithpp_COMPOUND(volt, V, watt{} / ampere{})
-
-        __unithpp_COMPOUND(ohm, Ohm, volt{} / ampere{})
-
-        __unithpp_COMPOUND(farad, F, coulomb{} / volt{})
-
-        __unithpp_COMPOUND(weber, Wb, volt{} * second{})
-
-        __unithpp_COMPOUND(tesla, T, weber{} / (meter{} * meter{}))
-
-        __unithpp_COMPOUND(henry, H, weber{} / ampere{})
-
-        __unithpp_COMPOUND(siemens, S, ampere{} / volt{})
-
-        __unithpp_COMPOUND(gray, Gy, joule{} / kilo<gram>{})
-
-        __unithpp_COMPOUND(magnetic_flux_density, MFB, tesla{})
-
-        __unithpp_COMPOUND(permittivity, Perm, farad{} / meter{})
-
-        __unithpp_COMPOUND(permeability, Permb, henry{} / meter{})
-
-        // Photometry
-        __unithpp_BASE(steradian, sr)
-
-        __unithpp_COMPOUND(lumen, lm, candela{} * steradian{})
-
-        __unithpp_COMPOUND(lux, lx, lumen{} / (meter{} * meter{}))
-
-        __unithpp_COMPOUND(sievert, Sv, joule{} / kilo<gram>{})
-
-        __unithpp_COMPOUND(katal, kat, mole{} / second{})
-
-        // Geometry functions
-#define __unithpp_bring_rad_func(NAME) \
-        template <typename V, extra::FixedString SubSymbol, auto SubToBase, auto BaseToSub> \
-        static V NAME(Quantity<extra::Unit<extra::BaseUnit<"rad", 1, std::ratio<1>, "", SubSymbol, SubToBase, BaseToSub>>, V> q) { \
-            return std::NAME(radians(q).raw_value); \
+        explicit constexpr Quantity(ValueType v = 0) : value(v) {
         }
 
-        __unithpp_bring_rad_func(sin)
-        __unithpp_bring_rad_func(cos)
-        __unithpp_bring_rad_func(tan)
-        __unithpp_bring_rad_func(sinh)
-        __unithpp_bring_rad_func(cosh)
-        __unithpp_bring_rad_func(tanh)
-        __unithpp_bring_rad_func(asin)
-        __unithpp_bring_rad_func(acos)
-        __unithpp_bring_rad_func(atan)
-        __unithpp_bring_rad_func(asinh)
-        __unithpp_bring_rad_func(acosh)
-        __unithpp_bring_rad_func(atanh)
+        template <typename OtherUnit, typename OtherValue>
+        explicit(!std::is_same_v<ThisUnit, OtherUnit>) constexpr Quantity(
+            const Quantity<OtherUnit, OtherValue>& other
+        ) {
+            if constexpr (std::is_same_v<ThisUnit, OtherUnit>) {
+                value = static_cast<ValueType>(other.value);
+            } else {
+                constexpr ValueType from_scale = get_unit_scale<ThisUnit>();
+                constexpr ValueType to_scale   = get_unit_scale<OtherUnit>();
+
+                value = static_cast<ValueType>(other.value * (to_scale / from_scale));
+            }
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const Quantity& q) {
+            os << q.value << " ";
+            print_unit<ThisUnit>(os);
+            return os;
+        }
+
+        template <typename OtherUnit, typename OtherValue>
+        constexpr auto operator*(const Quantity<OtherUnit, OtherValue>& rhs) const {
+            using ResultUnit = binary_op_result_t<ThisUnit, OtherUnit, 1>;
+            return Quantity<ResultUnit, decltype(value * rhs.value)>(value * rhs.value);
+        }
+
+        template <typename OtherUnit, typename OtherValue>
+        constexpr auto operator/(const Quantity<OtherUnit, OtherValue>& rhs) const {
+            using ResultUnit = binary_op_result_t<ThisUnit, OtherUnit, -1>;
+            return Quantity<ResultUnit, decltype(value / rhs.value)>(value / rhs.value);
+        }
+
+        constexpr auto operator*(ValueType rhs) const {
+            return Quantity(value * rhs);
+        }
+
+        constexpr auto operator/(ValueType rhs) const {
+            return Quantity(value / rhs);
+        }
+
+        friend constexpr auto operator*(ValueType lhs, const Quantity& rhs) {
+            return Quantity(rhs.value * lhs);
+        }
+
+        friend constexpr auto operator/(ValueType lhs, const Quantity& rhs) {
+            using Dimensionless = Unit<std::tuple<>, 0>;
+            using ResultUnit    = binary_op_result_t<Dimensionless, ThisUnit, -1>;
+            return Quantity<ResultUnit, ValueType>(lhs / rhs.value);
+        }
+
+        constexpr auto operator+(const Quantity& rhs) const {
+            return Quantity(value + rhs.value);
+        }
+
+        constexpr auto operator-(const Quantity& rhs) const {
+            return Quantity(value - rhs.value);
+        }
+    };
+
+    template <FixedString Sym, int Exp = 1>
+    using base_unit = Unit<std::tuple<BaseUnit<Sym>>, Exp>;
+    template <FixedString Sym, int Exp = 1>
+    using base_unit_q = Quantity<base_unit<Sym, Exp>>;
+
+    template <typename U, FixedString Sym, typename Ratio = std::ratio<1>, int Exp = 1>
+    using compound_unit = Unit<
+        typename U::Units,
+        Exp,
+        Sym,
+        Ratio
+    >;
+
+    template <typename Q, FixedString Sym, typename Ratio = std::ratio<1>, int Exp = 1>
+    using compound_unit_q = Quantity<compound_unit<typename Q::u, Sym, Ratio, Exp>>;
+
+    template <typename U, FixedString Prefix, typename Ratio = std::ratio<1>, int Exp = 1>
+    using scaled_unit = compound_unit<U, Prefix + get_symbol<U>::value, Ratio, Exp>;
+
+    template <typename Q, FixedString Prefix, typename Ratio = std::ratio<1>, int Exp = 1>
+    using scaled_unit_q = Quantity<scaled_unit<typename Q::u, Prefix, Ratio, Exp>>;
+
+    namespace math {
+        template <typename Q> constexpr auto abs(const Q& q) {
+            return Q(std::abs(q.value));
+        }
+
+        template <typename Q> constexpr auto fmod(const Q& q, const typename Q::ValueType& mod) {
+            return Q(std::fmod(q.value, mod));
+        }
+
+        template <typename Q> constexpr auto ceil(const Q& q) {
+            return Q(std::ceil(q.value));
+        }
+
+        template <typename Q> constexpr auto floor(const Q& q) {
+            return Q(std::floor(q.value));
+        }
     }
 
-    namespace all {
-        using namespace Unit;
-        using namespace Unit::defaults;
-        using namespace Unit::defaults::literals;
+    namespace defaults {
+        using namespace math;
+
+        template <typename Q, int E = 1> using atto  = scaled_unit_q<Q, "a", std::atto, E>;
+        template <typename Q, int E = 1> using femto = scaled_unit_q<Q, "f", std::femto, E>;
+        template <typename Q, int E = 1> using pico  = scaled_unit_q<Q, "p", std::pico, E>;
+        template <typename Q, int E = 1> using nano  = scaled_unit_q<Q, "n", std::nano, E>;
+        template <typename Q, int E = 1> using micro = scaled_unit_q<Q, "μ", std::micro, E>;
+        template <typename Q, int E = 1> using milli = scaled_unit_q<Q, "m", std::milli, E>;
+        template <typename Q, int E = 1> using centi = scaled_unit_q<Q, "c", std::centi, E>;
+        template <typename Q, int E = 1> using deci  = scaled_unit_q<Q, "d", std::deci, E>;
+        template <typename Q, int E = 1> using deca  = scaled_unit_q<Q, "da", std::deca, E>;
+        template <typename Q, int E = 1> using hecto = scaled_unit_q<Q, "h", std::hecto, E>;
+        template <typename Q, int E = 1> using kilo  = scaled_unit_q<Q, "k", std::kilo, E>;
+        template <typename Q, int E = 1> using mega  = scaled_unit_q<Q, "M", std::mega, E>;
+        template <typename Q, int E = 1> using giga  = scaled_unit_q<Q, "G", std::giga, E>;
+        template <typename Q, int E = 1> using tera  = scaled_unit_q<Q, "T", std::tera, E>;
+        template <typename Q, int E = 1> using peta  = scaled_unit_q<Q, "P", std::peta, E>;
+        template <typename Q, int E = 1> using exa   = scaled_unit_q<Q, "E", std::exa, E>;
+
+#define __unithpp_literal_(TYPE, SYM) \
+        static auto operator ""_##SYM(long double val) { return TYPE(static_cast<float_t>(val)); } \
+        static auto operator ""_##SYM(unsigned long long val) { return TYPE(static_cast<float_t>(val)); }
+#define __unithpp_literal(TYPE) __unithpp_literal_(TYPE, TYPE)
+#define __unithpp_scales(UNIT) \
+    __unithpp_literal_(atto<UNIT>, a##UNIT) \
+    __unithpp_literal_(femto<UNIT>, f##UNIT) \
+    __unithpp_literal_(pico<UNIT>, p##UNIT) \
+    __unithpp_literal_(nano<UNIT>, n##UNIT) \
+    __unithpp_literal_(micro<UNIT>, u##UNIT) \
+    __unithpp_literal_(milli<UNIT>, m##UNIT) \
+    __unithpp_literal_(centi<UNIT>, c##UNIT) \
+    __unithpp_literal_(deci<UNIT>, d##UNIT) \
+    __unithpp_literal_(deca<UNIT>, da##UNIT) \
+    __unithpp_literal_(hecto<UNIT>, h##UNIT) \
+    __unithpp_literal_(kilo<UNIT>, k##UNIT) \
+    __unithpp_literal_(mega<UNIT>, M##UNIT) \
+    __unithpp_literal_(giga<UNIT>, G##UNIT) \
+    __unithpp_literal_(tera<UNIT>, T##UNIT) \
+    __unithpp_literal_(peta<UNIT>, P##UNIT) \
+    __unithpp_literal_(exa<UNIT>, E##UNIT)
+#define __unithpp_literals(UNIT) \
+    __unithpp_literal(UNIT) \
+    __unithpp_scales(UNIT)
+
+        using m   = base_unit_q<"m">;
+        using g   = base_unit_q<"g">;
+        using s   = base_unit_q<"s">;
+        using mol = base_unit_q<"mol">;
+        using K   = base_unit_q<"K">;
+        using A   = base_unit_q<"A">;
+        using cd  = base_unit_q<"cd">;
+        using rad = base_unit_q<"rad">;
+        using px  = base_unit_q<"px">;
+
+        using L      = compound_unit_q<deci<m, 3>, "L">;
+        using deg    = compound_unit_q<rad, "deg", std::ratio<17453292519943296, 1000000000000000000>>;
+        using grad   = compound_unit_q<rad, "grad", std::ratio<15707963267948966, 1000000000000000000>>;
+        using mi     = scaled_unit_q<m, "mi", std::ratio<1609344, 1000>>;
+        using ft     = scaled_unit_q<m, "ft", std::ratio<3048, 10000>>;
+        using in     = scaled_unit_q<m, "in", std::ratio<254, 10000>>;
+        using yd     = scaled_unit_q<m, "yd", std::ratio<9144, 10000>>;
+        using oz     = scaled_unit_q<g, "oz", std::ratio<28349523125, 1000000000>>;
+        using lb     = scaled_unit_q<g, "lb", std::ratio<45359237, 100>>;
+        using ton    = scaled_unit_q<g, "ton", std::ratio<90718474, 10>>;
+        using gal    = scaled_unit_q<L, "gal", std::ratio<3785411784, 10000000>>;
+        using minute = scaled_unit_q<s, "minute", std::ratio<60>>;
+        using hour   = scaled_unit_q<s, "hour", std::ratio<3600>>;
+        using day    = scaled_unit_q<s, "day", std::ratio<86400>>;
+        using week   = scaled_unit_q<s, "week", std::ratio<604800>>;
+        using Hz     = compound_unit_q<base_unit_q<"s", -1>, "Hz">;
+        using N      = compound_unit_q<decltype(kilo<g>{} * m{} / (s{} * s{})), "N">;
+        using Pa     = compound_unit_q<decltype(N{} / (m{} * m{})), "Pa">;
+        using J      = compound_unit_q<decltype(N{} * m{}), "J">;
+        using W      = compound_unit_q<decltype(J{} / s{}), "W">;
+        using C      = compound_unit_q<decltype(A{} * s{}), "C">;
+        using V      = compound_unit_q<decltype(W{} / A{}), "V">;
+        using Ohm    = compound_unit_q<decltype(V{} / A{}), "Ohm">;
+        using S      = compound_unit_q<decltype(A{} / V{}), "S">;
+        using F      = compound_unit_q<decltype(C{} / V{}), "F">;
+        using H      = compound_unit_q<decltype(Ohm{} * s{}), "H">;
+        using Wb     = compound_unit_q<decltype(V{} * s{}), "Wb">;
+        using Tesla  = compound_unit_q<decltype(Wb{} / (m{} * m{})), "T">;
+        using sr     = compound_unit_q<base_unit_q<"rad", 2>, "sr">;
+        using lm     = compound_unit_q<decltype(cd{} * sr{}), "lm">;
+        using lx     = compound_unit_q<decltype(lm{} / (m{} * m{})), "lx">;
+        using Bq     = compound_unit_q<base_unit_q<"s", -1>, "Bq">;
+        using Gy     = compound_unit_q<decltype(J{} / kilo<g>{}), "Gy">;
+        using Sv     = compound_unit_q<decltype(J{} / kilo<g>{}), "Sv">;
+        using Kat    = compound_unit_q<decltype(mol{} / s{}), "Kat">;
+        using dyn    = compound_unit_q<decltype(g{} * m{} / (s{} * s{})), "dyn">;
+
+        __unithpp_literals(m)
+        __unithpp_literals(g)
+        __unithpp_literals(s)
+        __unithpp_literals(mol)
+        __unithpp_literals(K)
+        __unithpp_literals(A)
+        __unithpp_literals(cd)
+        __unithpp_literals(rad)
+        __unithpp_literals(px)
+
+        __unithpp_literals(L)
+        __unithpp_literals(deg)
+        __unithpp_literals(grad)
+        __unithpp_literals(mi)
+        __unithpp_literals(ft)
+        __unithpp_literals(in)
+        __unithpp_literals(yd)
+        __unithpp_literals(oz)
+        __unithpp_literals(lb)
+        __unithpp_literals(ton)
+        __unithpp_literals(gal)
+        __unithpp_literal(minute)
+        __unithpp_literal(hour)
+        __unithpp_literal(day)
+        __unithpp_literal(week)
+        __unithpp_literals(Hz)
+        __unithpp_literals(N)
+        __unithpp_literals(Pa)
+        __unithpp_literals(J)
+        __unithpp_literals(W)
+        __unithpp_literals(C)
+        __unithpp_literals(V)
+        __unithpp_literals(Ohm)
+        __unithpp_literals(S)
+        __unithpp_literals(F)
+        __unithpp_literals(H)
+        __unithpp_literals(Wb)
+        __unithpp_literals(Tesla)
+        __unithpp_literals(sr)
+        __unithpp_literals(lm)
+        __unithpp_literals(lx)
+        __unithpp_literals(Bq)
+        __unithpp_literals(Gy)
+        __unithpp_literals(Sv)
+        __unithpp_literals(Kat)
+        __unithpp_literals(dyn)
+
+#undef __unithpp_literal
+#undef __unithpp_literals
+#undef __unithpp_scales
+
+        static auto operator ""_degC(long double val) {
+            return K(static_cast<float_t>(val) + 273.15);
+        }
+
+        static auto operator ""_degC(unsigned long long val) {
+            return K(static_cast<float_t>(val) + 273.15);
+        }
+
+        static auto operator ""_degF(long double val) {
+            return K(static_cast<float_t>((val - 32) * 5 / 9 + 273.15));
+        }
+
+        static auto operator ""_degF(unsigned long long val) {
+            return K((val - 32) * 5 / 9 + 273.15);
+        }
+
+        template <typename U> requires requires { rad{std::declval<Quantity<U>>()}; }
+        constexpr auto sin(const Quantity<U>& q) {
+            return std::sin(rad{q}.value);
+        }
+
+        template <typename U> requires requires { rad{std::declval<Quantity<U>>()}; }
+        constexpr auto cos(const Quantity<U>& q) {
+            return std::cos(rad{q}.value);
+        }
+
+        template <typename U> requires requires { rad{std::declval<Quantity<U>>()}; }
+        constexpr auto tan(const Quantity<U>& q) {
+            return std::tan(rad{q}.value);
+        }
     }
 }
