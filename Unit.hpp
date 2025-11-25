@@ -8,7 +8,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 7;
+static constexpr int UNIT_HPP_VERSION_MINOR = 8;
 
 namespace Unit {
     using float_t = double;
@@ -192,52 +192,64 @@ namespace Unit {
             os << T::Sym;
         } else {
             if constexpr (!T::Sym.empty()) {
-                os << T::Sym;
-                if constexpr (T::Exp != 1) {
-                    os << "^" << T::Exp;
+                if constexpr (T::Exp < 0) {
+                    os << "1/" << T::Sym;
+                    if constexpr (T::Exp != -1) {
+                        os << "^" << -T::Exp;
+                    }
+                } else {
+                    os << T::Sym;
+                    if constexpr (T::Exp != 1) {
+                        os << "^" << T::Exp;
+                    }
                 }
             } else {
-                using Tuple        = typename T::Units;
-                constexpr size_t N = std::tuple_size_v<Tuple>;
+                if constexpr (T::Exp < 0) {
+                    os << "1/";
+                    print_unit_magnitude<T>(os);
+                } else {
+                    using Tuple        = typename T::Units;
+                    constexpr size_t N = std::tuple_size_v<Tuple>;
 
-                bool has_numerator   = false;
-                bool has_denominator = false;
-
-                [&]<size_t... I>(std::index_sequence<I...>) {
-                    size_t count = 0;
-                    ((get_exponent<std::tuple_element_t<I, Tuple>>::value >= 0
-                          ? (
-                              (count++ > 0 ? os << "*" : os),
-                              print_unit<std::tuple_element_t<I, Tuple>>(os),
-                              has_numerator = true
-                          )
-                          : 0), ...);
-                }(std::make_index_sequence<N>{});
-
-                [&]<size_t... I>(std::index_sequence<I...>) {
-                    ((get_exponent<std::tuple_element_t<I, Tuple>>::value < 0 ? has_denominator = true : 0), ...);
-                }(std::make_index_sequence<N>{});
-
-                if (has_denominator) {
-                    if (!has_numerator) {
-                        os << "1";
-                    }
-                    os << "/";
+                    bool has_numerator   = false;
+                    bool has_denominator = false;
 
                     [&]<size_t... I>(std::index_sequence<I...>) {
                         size_t count = 0;
-                        ((get_exponent<std::tuple_element_t<I, Tuple>>::value < 0
+                        ((get_exponent<std::tuple_element_t<I, Tuple>>::value >= 0
                               ? (
                                   (count++ > 0 ? os << "*" : os),
-                                  print_unit_magnitude<std::tuple_element_t<I, Tuple>>(os),
-                                  0
+                                  print_unit<std::tuple_element_t<I, Tuple>>(os),
+                                  has_numerator = true
                               )
                               : 0), ...);
                     }(std::make_index_sequence<N>{});
-                }
 
-                if constexpr (T::Exp != 1) {
-                    os << "^" << T::Exp;
+                    [&]<size_t... I>(std::index_sequence<I...>) {
+                        ((get_exponent<std::tuple_element_t<I, Tuple>>::value < 0 ? has_denominator = true : 0), ...);
+                    }(std::make_index_sequence<N>{});
+
+                    if (has_denominator) {
+                        if (!has_numerator) {
+                            os << "1";
+                        }
+                        os << "/";
+
+                        [&]<size_t... I>(std::index_sequence<I...>) {
+                            size_t count = 0;
+                            ((get_exponent<std::tuple_element_t<I, Tuple>>::value < 0
+                                  ? (
+                                      (count++ > 0 ? os << "*" : os),
+                                      print_unit_magnitude<std::tuple_element_t<I, Tuple>>(os),
+                                      0
+                                  )
+                                  : 0), ...);
+                        }(std::make_index_sequence<N>{});
+                    }
+
+                    if constexpr (T::Exp != 1) {
+                        os << "^" << T::Exp;
+                    }
                 }
             }
         }
