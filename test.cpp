@@ -56,7 +56,7 @@ int main() {
     // Note: We cast to m/s for the calculation to keep units clean,
     // though the library would handle the math regardless.
     MetersPerSecond dv = MetersPerSecond(v_final) - MetersPerSecond(v_initial);
-    auto acceleration = dv / delta_t;
+    auto acceleration  = dv / delta_t;
 
     // F = m * a
     // The result is implicitly in [kg * m * s^-2]
@@ -97,7 +97,7 @@ int main() {
     // Formula: R = (v^2 * sin(2*theta)) / g
 
     auto v_launch = 50.0_m / 1.0_s;
-    auto angle    = 45.0_deg;      // Input in degrees
+    auto angle    = 45.0_deg; // Input in degrees
     auto g_val    = 9.81_m / (1.0_s * 1.0_s);
 
     // Unit::defaults::sin takes an angle and returns a dimensionless double

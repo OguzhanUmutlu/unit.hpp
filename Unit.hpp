@@ -8,7 +8,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 4;
+static constexpr int UNIT_HPP_VERSION_MINOR = 5;
 
 namespace Unit {
     using float_t = double;
@@ -164,12 +164,12 @@ namespace Unit {
             if constexpr (!T::Sym.empty()) {
                 os << T::Sym;
             } else {
-                constexpr size_t N = std::tuple_size_v<T::Units>;
+                constexpr size_t N = std::tuple_size_v<typename T::Units>;
 
                 if constexpr (N > 0) {
                     [&]<size_t... I>(std::index_sequence<I...>) {
                         size_t idx = 0;
-                        ((print_unit<std::tuple_element_t<I, T::Units>>(os), (++idx < N ? os << "*" : os)), ...);
+                        ((print_unit<std::tuple_element_t<I, typename T::Units>>(os), (++idx < N ? os << "*" : os)), ...);
                     }(std::make_index_sequence<N>{});
                 }
             }
@@ -492,18 +492,18 @@ namespace Unit {
         using L      = compound_unit_q<deci<m, 3>, "L">;
         using deg    = compound_unit_q<rad, "deg", std::ratio<17453292519943296, 1000000000000000000>>;
         using grad   = compound_unit_q<rad, "grad", std::ratio<15707963267948966, 1000000000000000000>>;
-        using mi     = scaled_unit_q<m, "mi", std::ratio<1609344, 1000>>;
-        using ft     = scaled_unit_q<m, "ft", std::ratio<3048, 10000>>;
-        using in     = scaled_unit_q<m, "in", std::ratio<254, 10000>>;
-        using yd     = scaled_unit_q<m, "yd", std::ratio<9144, 10000>>;
-        using oz     = scaled_unit_q<g, "oz", std::ratio<28349523125, 1000000000>>;
-        using lb     = scaled_unit_q<g, "lb", std::ratio<45359237, 100>>;
-        using ton    = scaled_unit_q<g, "ton", std::ratio<90718474, 10>>;
-        using gal    = scaled_unit_q<L, "gal", std::ratio<3785411784, 10000000>>;
-        using minute = scaled_unit_q<s, "minute", std::ratio<60>>;
-        using hour   = scaled_unit_q<s, "hour", std::ratio<3600>>;
-        using day    = scaled_unit_q<s, "day", std::ratio<86400>>;
-        using week   = scaled_unit_q<s, "week", std::ratio<604800>>;
+        using mi     = compound_unit_q<m, "mi", std::ratio<1609344, 1000>>;
+        using ft     = compound_unit_q<m, "ft", std::ratio<3048, 10000>>;
+        using in     = compound_unit_q<m, "in", std::ratio<254, 10000>>;
+        using yd     = compound_unit_q<m, "yd", std::ratio<9144, 10000>>;
+        using oz     = compound_unit_q<g, "oz", std::ratio<28349523125, 1000000000>>;
+        using lb     = compound_unit_q<g, "lb", std::ratio<45359237, 100>>;
+        using ton    = compound_unit_q<g, "ton", std::ratio<90718474, 10>>;
+        using gal    = compound_unit_q<L, "gal", std::ratio<3785411784, 10000000>>;
+        using minute = compound_unit_q<s, "minute", std::ratio<60>>;
+        using hour   = compound_unit_q<s, "hour", std::ratio<3600>>;
+        using day    = compound_unit_q<s, "day", std::ratio<86400>>;
+        using week   = compound_unit_q<s, "week", std::ratio<604800>>;
         using Hz     = compound_unit_q<base_unit_q<"s", -1>, "Hz">;
         using N      = compound_unit_q<decltype(kilo<g>{} * m{} / (s{} * s{})), "N">;
         using Pa     = compound_unit_q<decltype(N{} / (m{} * m{})), "Pa">;
