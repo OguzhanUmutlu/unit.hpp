@@ -76,7 +76,7 @@ int main() {
     auto t = 2.0_s;
     auto v = d / t;    // 5 m/s
 
-    std::cout << v << "\n"; // prints: 5.0m*s^-1
+    std::cout << v << "\n"; // prints: 5.0 m/s
 }
 ```
 
@@ -123,7 +123,7 @@ Every SI base unit supports:
 | d      | deci   | 10⁻¹  |
 | c      | centi  | 10⁻²  |
 | m      | milli  | 10⁻³  |
-| μ      | micro  | 10⁻⁶  |
+| u      | micro  | 10⁻⁶  |
 | n      | nano   | 10⁻⁹  |
 | p      | pico   | 10⁻¹² |
 | f      | femto  | 10⁻¹⁵ |
@@ -131,7 +131,7 @@ Every SI base unit supports:
 Example:
 
 ```cpp
-1_km, 5_mm, 3_Mg, 20_ms, 10_μA
+1_km, 5_mm, 3_Mg, 20_ms, 10_uA
 ```
 
 ---
@@ -245,9 +245,9 @@ The library includes an automatic unit formatter. When you print a quantity, it 
 simplified unit breakdown.
 
 ```cpp
-std::cout << 10.0_m << "\n";             // prints: 10.0m
-std::cout << 10.0_N << "\n";             // prints: 10.0N
-std::cout << 5.0_m * 5.0_m << "\n";      // prints: 25.0m^2
+std::cout << 10.0_m << "\n";             // prints: 10.0 m
+std::cout << 10.0_N << "\n";             // prints: 10.0 N
+std::cout << 5.0_m * 5.0_m << "\n";      // prints: 25.0 m^2
 ```
 
 Add your own formatting helpers if you want unit symbols.
@@ -277,7 +277,7 @@ int main() {
     auto time     = 1.0_hour;
 
     // The type of 'speed' is automatically deduced.
-    // It infers a compound unit: mi * hour^-1
+    // It infers a compound unit: mi / hour
     auto speed = distance / time;
 
     std::cout << "Distance: " << distance << "\n";

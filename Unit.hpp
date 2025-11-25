@@ -8,7 +8,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 5;
+static constexpr int UNIT_HPP_VERSION_MINOR = 6;
 
 namespace Unit {
     using float_t = double;
@@ -157,7 +157,10 @@ namespace Unit {
     }
 
     template <typename T>
-    constexpr void print_unit(std::ostream& os) {
+    constexpr void print_unit(std::ostream& os);
+
+    template <typename T>
+    constexpr void print_unit_magnitude(std::ostream& os) {
         if constexpr (is_base_unit<T>::value) {
             os << T::Sym;
         } else {
@@ -165,16 +168,77 @@ namespace Unit {
                 os << T::Sym;
             } else {
                 constexpr size_t N = std::tuple_size_v<typename T::Units>;
-
                 if constexpr (N > 0) {
                     [&]<size_t... I>(std::index_sequence<I...>) {
                         size_t idx = 0;
-                        ((print_unit<std::tuple_element_t<I, typename T::Units>>(os), (++idx < N ? os << "*" : os)), ...);
+                        ((print_unit<std::tuple_element_t<I, typename T::Units>>(os), (++idx < N ? os << "*" : os)), ...
+                        );
                     }(std::make_index_sequence<N>{});
                 }
             }
-            if constexpr (T::Exp != 1) {
-                os << "^" << T::Exp;
+
+            constexpr int exp     = get_exponent<T>::value;
+            constexpr int abs_exp = (exp < 0) ? -exp : exp;
+
+            if constexpr (abs_exp != 1) {
+                os << "^" << abs_exp;
+            }
+        }
+    }
+
+    template <typename T>
+    constexpr void print_unit(std::ostream& os) {
+        if constexpr (is_base_unit<T>::value) {
+            os << T::Sym;
+        } else {
+            if constexpr (!T::Sym.empty()) {
+                os << T::Sym;
+                if constexpr (T::Exp != 1) {
+                    os << "^" << T::Exp;
+                }
+            } else {
+                using Tuple        = typename T::Units;
+                constexpr size_t N = std::tuple_size_v<Tuple>;
+
+                bool has_numerator   = false;
+                bool has_denominator = false;
+
+                [&]<size_t... I>(std::index_sequence<I...>) {
+                    size_t count = 0;
+                    ((get_exponent<std::tuple_element_t<I, Tuple>>::value >= 0
+                          ? (
+                              (count++ > 0 ? os << "*" : os),
+                              print_unit<std::tuple_element_t<I, Tuple>>(os),
+                              has_numerator = true
+                          )
+                          : 0), ...);
+                }(std::make_index_sequence<N>{});
+
+                [&]<size_t... I>(std::index_sequence<I...>) {
+                    ((get_exponent<std::tuple_element_t<I, Tuple>>::value < 0 ? has_denominator = true : 0), ...);
+                }(std::make_index_sequence<N>{});
+
+                if (has_denominator) {
+                    if (!has_numerator) {
+                        os << "1";
+                    }
+                    os << "/";
+
+                    [&]<size_t... I>(std::index_sequence<I...>) {
+                        size_t count = 0;
+                        ((get_exponent<std::tuple_element_t<I, Tuple>>::value < 0
+                              ? (
+                                  (count++ > 0 ? os << "*" : os),
+                                  print_unit_magnitude<std::tuple_element_t<I, Tuple>>(os),
+                                  0
+                              )
+                              : 0), ...);
+                    }(std::make_index_sequence<N>{});
+                }
+
+                if constexpr (T::Exp != 1) {
+                    os << "^" << T::Exp;
+                }
             }
         }
     }
