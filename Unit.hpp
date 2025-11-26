@@ -19,7 +19,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 11;
+static constexpr int UNIT_HPP_VERSION_MINOR = 10;
 
 namespace Unit {
     using float_t = double;
@@ -76,17 +76,6 @@ namespace Unit {
     };
 
     template <FixedString S> struct is_base_unit<BaseUnit<S>> : std::true_type {
-    };
-
-    template <typename T> struct is_base_unit_unit : std::false_type {
-    };
-
-    template <FixedString S>
-    struct is_base_unit_unit<Unit<std::tuple<BaseUnit<S>>, 1>> : std::true_type {
-    };
-
-    template <FixedString S>
-    struct is_base_unit_unit<BaseUnit<S>> : std::true_type {
     };
 
     template <typename T> struct is_unit : std::false_type {
@@ -305,17 +294,13 @@ namespace Unit {
     template <typename Tpl, int Exp, FixedString Sym, typename R, int InheritedExp>
     struct flatten<Unit<Tpl, Exp, Sym, R>, InheritedExp> {
         static constexpr int EffectiveExp = Exp * InheritedExp;
-
-        static constexpr bool is_base_like = (std::tuple_size_v<Tpl> == 1) &&
-            is_base_unit_unit<std::tuple_element_t<0, Tpl>>::value;
+        using ThisUnit                    = Unit<Tpl, Exp, Sym, R>;
 
         using type = std::conditional_t<
-            is_base_like || Sym.empty(),
-            flatten_tuple_t<Tpl, EffectiveExp>,
+            !Sym.empty(),
+            std::tuple<Unit<std::tuple<ThisUnit>, EffectiveExp>>,
             flatten_tuple_t<Tpl, EffectiveExp>
         >;
-
-        using type = flatten_tuple_t<Tpl, EffectiveExp>;
     };
 
     template <typename Term1, typename Term2>
@@ -407,21 +392,6 @@ namespace Unit {
         >;
     };
 
-    template <typename U> struct canonical_unit_terms {
-        using Flattened = flatten_t<U, 1>;
-        using Merged    = merge_all_t<std::tuple<>, Flattened>;
-        using type      = filter_zero_t<Merged>;
-    };
-
-    template <typename U> using canonical_unit_terms_t = typename canonical_unit_terms<U>::type;
-
-    template <typename U1, typename U2>
-    struct is_dimensionally_same {
-        static constexpr bool value = std::is_same_v<canonical_unit_terms_t<U1>, canonical_unit_terms_t<U2>>;
-    };
-
-    template <typename U1, typename U2> constexpr bool is_dimensionally_same_v = is_dimensionally_same<U1, U2>::value;
-
     template <typename Tuple> struct reconstruct {
         using type = Unit<Tuple>;
     };
@@ -432,6 +402,37 @@ namespace Unit {
     struct reconstruct<std::tuple<SingleTerm>> {
         using type = SingleTerm;
     };
+
+    template <typename U, int InheritedExp> struct pure_flatten;
+    template <typename U, int InheritedExp> using pure_flatten_t = pure_flatten<U, InheritedExp>::type;
+
+    template <typename Tuple, int ParentExp> struct pure_flatten_tuple;
+    template <typename Tuple, int ParentExp> using pure_flatten_tuple_t = pure_flatten_tuple<Tuple, ParentExp>::type;
+
+    template <typename... Ts, int ParentExp>
+    struct pure_flatten_tuple<std::tuple<Ts...>, ParentExp> {
+        using type = decltype(std::tuple_cat(pure_flatten_t<Ts, ParentExp>{}...));
+    };
+
+    template <FixedString S, int InheritedExp>
+    struct pure_flatten<BaseUnit<S>, InheritedExp> {
+        using type = std::tuple<Unit<std::tuple<BaseUnit<S>>, InheritedExp>>;
+    };
+
+    template <typename Tpl, int Exp, FixedString Sym, typename R, int InheritedExp>
+    struct pure_flatten<Unit<Tpl, Exp, Sym, R>, InheritedExp> {
+        using type = pure_flatten_tuple_t<Tpl, Exp * InheritedExp>;
+    };
+
+    template <typename U>
+    struct get_dimension {
+        using Flattened = pure_flatten_t<U, 1>;
+        using Merged    = merge_all_t<std::tuple<>, Flattened>;
+        using Filtered  = filter_zero_t<Merged>;
+        using type      = reconstruct_t<Filtered>;
+    };
+
+    template <typename U> using dimension_t = get_dimension<U>::type;
 
     template <typename U1, typename U2, int Sign>
     struct binary_op_result {
@@ -454,9 +455,10 @@ namespace Unit {
         }
 
         template <typename OtherUnit, typename OtherValue>
-            requires(std::is_same_v<ThisUnit, OtherUnit> || is_dimensionally_same_v<ThisUnit, OtherUnit>)
-        explicit(!std::is_same_v<ThisUnit, OtherUnit>)
-        constexpr Quantity(const Quantity<OtherUnit, OtherValue>& other) {
+            requires std::is_same_v<dimension_t<ThisUnit>, dimension_t<OtherUnit>>
+        explicit(!std::is_same_v<ThisUnit, OtherUnit>) constexpr Quantity(
+            const Quantity<OtherUnit, OtherValue>& other
+        ) {
             if constexpr (std::is_same_v<ThisUnit, OtherUnit>) {
                 value = static_cast<ValueType>(other.value);
             } else {
