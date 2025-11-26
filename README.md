@@ -10,7 +10,7 @@ in a massive framework — this is the solution.
 Drop in one header. Get full-power dimensional safety.
 
 Optionally you can include the **Vector.hpp** header for unit-safe vectors and include **Matrix.hpp**
-for unit-safe matrices.
+for unit-safe matrices. (and **Rect.hpp** for unit-safe rectangles.)
 
 ---
 
