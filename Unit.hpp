@@ -2,7 +2,7 @@
  * Unit.hpp
  * A header-only C++20 library for compile-time dimensional analysis and unit conversion.
  *
- * Version: 0.13
+ * Version: 0.14
  * Author:  OguzhanUmutlu
  * GitHub:  https://github.com/OguzhanUmutlu/unit.hpp
  *
@@ -19,7 +19,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 13;
+static constexpr int UNIT_HPP_VERSION_MINOR = 14;
 
 namespace Unit {
     using float_t = double;
@@ -78,6 +78,8 @@ namespace Unit {
     template <FixedString S> struct is_base_unit<BaseUnit<S>> : std::true_type {
     };
 
+    template <typename T> inline constexpr auto is_base_unit_v = is_base_unit<T>::value;
+
     template <typename T> struct is_unit : std::false_type {
     };
 
@@ -94,7 +96,10 @@ namespace Unit {
         static constexpr int value = E;
     };
 
+    template <typename T> inline constexpr auto get_exponent_v = get_exponent<T>::value;
+
     template <typename T> struct get_symbol;
+    template <typename T> inline constexpr auto get_symbol_v = get_symbol<T>::value;
 
     template <FixedString S>
     struct get_symbol<BaseUnit<S>> {
@@ -107,7 +112,7 @@ namespace Unit {
             if constexpr (!S.empty()) {
                 return S;
             } else if constexpr (std::tuple_size_v<Tpl> == 1 && E == 1) {
-                return get_symbol<std::tuple_element_t<0, Tpl>>::value;
+                return get_symbol_v<std::tuple_element_t<0, Tpl>>;
             } else {
                 return FixedString("");
             }
@@ -159,7 +164,7 @@ namespace Unit {
 
     template <typename T>
     constexpr float_t get_unit_scale() {
-        if constexpr (is_base_unit<T>::value) {
+        if constexpr (is_base_unit_v<T>) {
             return 1.0;
         } else {
             float_t inner = tuple_scale_product<typename T::Units>();
@@ -172,7 +177,7 @@ namespace Unit {
 
     template <typename T>
     constexpr void print_unit_magnitude(std::ostream& os) {
-        if constexpr (is_base_unit<T>::value) {
+        if constexpr (is_base_unit_v<T>) {
             os << T::Sym;
         } else {
             if constexpr (!T::Sym.empty()) {
@@ -188,7 +193,7 @@ namespace Unit {
                 }
             }
 
-            constexpr int exp     = get_exponent<T>::value;
+            constexpr int exp     = get_exponent_v<T>;
             constexpr int abs_exp = (exp < 0) ? -exp : exp;
 
             if constexpr (abs_exp != 1) {
@@ -199,7 +204,7 @@ namespace Unit {
 
     template <typename T>
     constexpr void print_unit(std::ostream& os) {
-        if constexpr (is_base_unit<T>::value) {
+        if constexpr (is_base_unit_v<T>) {
             os << T::Sym;
         } else {
             if constexpr (!T::Sym.empty()) {
@@ -228,7 +233,7 @@ namespace Unit {
 
                     [&]<size_t... I>(std::index_sequence<I...>) {
                         size_t count = 0;
-                        ((get_exponent<std::tuple_element_t<I, Tuple>>::value >= 0
+                        ((get_exponent_v<std::tuple_element_t<I, Tuple>> >= 0
                               ? (
                                   (count++ > 0 ? os << "*" : os),
                                   print_unit<std::tuple_element_t<I, Tuple>>(os),
@@ -238,7 +243,7 @@ namespace Unit {
                     }(std::make_index_sequence<N>{});
 
                     [&]<size_t... I>(std::index_sequence<I...>) {
-                        ((get_exponent<std::tuple_element_t<I, Tuple>>::value < 0 ? has_denominator = true : 0), ...);
+                        ((get_exponent_v<std::tuple_element_t<I, Tuple>> < 0 ? has_denominator = true : 0), ...);
                     }(std::make_index_sequence<N>{});
 
                     if (has_denominator) {
@@ -249,7 +254,7 @@ namespace Unit {
 
                         [&]<size_t... I>(std::index_sequence<I...>) {
                             size_t count = 0;
-                            ((get_exponent<std::tuple_element_t<I, Tuple>>::value < 0
+                            ((get_exponent_v<std::tuple_element_t<I, Tuple>> < 0
                                   ? (
                                       (count++ > 0 ? os << "*" : os),
                                       print_unit_magnitude<std::tuple_element_t<I, Tuple>>(os),
@@ -310,6 +315,9 @@ namespace Unit {
         static constexpr bool value = std::is_same_v<B1, B2>;
     };
 
+    template <typename Term1, typename Term2>
+    inline constexpr auto is_same_basis_v = is_same_basis<Term1, Term2>::value;
+
     template <typename Term, int ExtraExp>
     struct add_exp_to_term {
         using Basis                 = std::tuple_element_t<0, typename Term::Units>;
@@ -340,6 +348,9 @@ namespace Unit {
         }();
     };
 
+    template <typename Term1, typename Term2> inline constexpr auto term_less_v = term_less<Term1, Term2>::value;
+
+
     template <typename AccumTuple, typename Term> struct merge_one;
     template <typename AccumTuple, typename Term> using merge_one_t = merge_one<AccumTuple, Term>::type;
 
@@ -351,12 +362,12 @@ namespace Unit {
     template <typename Head, typename... Tail, typename Term>
     struct merge_one<std::tuple<Head, Tail...>, Term> {
         using type = std::conditional_t<
-            is_same_basis<Head, Term>::value,
+            is_same_basis_v<Head, Term>,
             std::tuple<add_exp_to_term_t<Head, Term::Exp>, Tail...>,
             std::conditional_t<
-                term_less<Term, Head>::value,
+                term_less_v<Term, Head>,
                 std::tuple<Term, Head, Tail...>,
-                tuple_cat_type_t<std::tuple<Head>, typename merge_one<std::tuple<Tail...>, Term>::type>
+                tuple_cat_type_t<std::tuple<Head>, merge_one_t<std::tuple<Tail...>, Term>>
             >
         >;
     };
@@ -404,10 +415,10 @@ namespace Unit {
     };
 
     template <typename U, int InheritedExp> struct decompose;
-    template <typename U, int InheritedExp> using decompose_t = typename decompose<U, InheritedExp>::type;
+    template <typename U, int InheritedExp> using decompose_t = decompose<U, InheritedExp>::type;
 
     template <typename Tuple, int ParentExp> struct decompose_tuple;
-    template <typename Tuple, int ParentExp> using decompose_tuple_t = typename decompose_tuple<Tuple, ParentExp>::type;
+    template <typename Tuple, int ParentExp> using decompose_tuple_t = decompose_tuple<Tuple, ParentExp>::type;
 
     template <typename... Ts, int ParentExp>
     struct decompose_tuple<std::tuple<Ts...>, ParentExp> {
@@ -421,9 +432,9 @@ namespace Unit {
 
     template <typename Tpl, int Exp, FixedString Sym, typename R, int InheritedExp>
     struct decompose<Unit<Tpl, Exp, Sym, R>, InheritedExp> {
-        // Multiply exponents: (s^-1)^-1 = s^1
         static constexpr int EffectiveExp = Exp * InheritedExp;
-        using type                        = decompose_tuple_t<Tpl, EffectiveExp>;
+
+        using type = decompose_tuple_t<Tpl, EffectiveExp>;
     };
 
     template <typename U>
@@ -435,7 +446,7 @@ namespace Unit {
     };
 
     template <typename U>
-    using pure_unit_t = typename pure_unit<U>::type;
+    using pure_unit_t = pure_unit<U>::type;
 
     template <typename U1, typename U2, int Sign>
     struct binary_op_result {
@@ -575,7 +586,7 @@ namespace Unit {
     using compound_unit_q = Quantity<compound_unit<typename Q::u, Sym, Ratio, Exp>>;
 
     template <typename U, FixedString Prefix, typename Ratio = std::ratio<1>, int Exp = U::Exp>
-    using scaled_unit = compound_unit<U, Prefix + get_symbol<U>::value, Ratio, Exp>;
+    using scaled_unit = compound_unit<U, Prefix + get_symbol_v<U>, Ratio, Exp>;
 
     template <typename Q, FixedString Prefix, typename Ratio = std::ratio<1>, int Exp = Q::u::Exp>
     using scaled_unit_q = Quantity<scaled_unit<typename Q::u, Prefix, Ratio, Exp>>;
