@@ -12,6 +12,8 @@ void print_header(const char* title) {
 int main() {
     print_header("1. BASIC MOTION (Unit Inference)");
 
+    std::cout << static_cast<double>(1_m) << " meters\n";
+
     // Define variables using literals.
     // Notice we can use 'mi' (miles) and 'hour' directly.
     auto distance = 60.0_mi;

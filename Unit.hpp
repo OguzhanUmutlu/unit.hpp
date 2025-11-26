@@ -8,7 +8,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 9;
+static constexpr int UNIT_HPP_VERSION_MINOR = 10;
 
 namespace Unit {
     using float_t = double;
@@ -208,7 +208,8 @@ namespace Unit {
                     os << "1/";
                     print_unit_magnitude<T>(os);
                 } else {
-                    using Tuple        = typename T::Units;
+                    using Tuple = T::Units;
+
                     constexpr size_t N = std::tuple_size_v<Tuple>;
 
                     bool has_numerator   = false;
@@ -470,6 +471,46 @@ namespace Unit {
         }
 
         constexpr auto operator<=>(const Quantity& rhs) const = default;
+
+        template <typename OtherUnit>
+            requires std::same_as<Quantity, decltype(Quantity() + Quantity<OtherUnit, ValueType>())>
+        constexpr auto& operator+=(const Quantity<OtherUnit, ValueType>& rhs) {
+            *this = *this + rhs;
+            return *this;
+        }
+
+        template <typename OtherUnit>
+            requires std::same_as<Quantity, decltype(Quantity() - Quantity<OtherUnit, ValueType>())>
+        constexpr auto& operator-=(const Quantity<OtherUnit, ValueType>& rhs) {
+            *this = *this - rhs;
+            return *this;
+        }
+
+        template <typename OtherUnit>
+            requires std::same_as<Quantity, decltype(Quantity() * Quantity<OtherUnit, ValueType>())>
+        constexpr auto& operator*=(const Quantity<OtherUnit, ValueType>& rhs) {
+            *this = *this * rhs;
+            return *this;
+        }
+
+        template <typename OtherUnit>
+            requires std::same_as<Quantity, decltype(Quantity() / Quantity<OtherUnit, ValueType>())>
+        constexpr auto& operator/=(const Quantity<OtherUnit, ValueType>& rhs) {
+            *this = *this / rhs;
+            return *this;
+        }
+
+        constexpr auto operator+() const {
+            return *this;
+        }
+
+        constexpr auto operator-() const {
+            return Quantity(-value);
+        }
+
+        explicit operator ValueType() const {
+            return value;
+        }
     };
 
     template <FixedString Sym, int Exp = 1>
@@ -499,8 +540,8 @@ namespace Unit {
             return Q(std::abs(q.value));
         }
 
-        template <typename Q> constexpr auto fmod(const Q& q, const typename Q::ValueType& mod) {
-            return Q(std::fmod(q.value, mod));
+        template <typename Q> constexpr auto fmod(const Q& q1, const Q& q2) {
+            return Q(std::fmod(q1.value, q2.value));
         }
 
         template <typename Q> constexpr auto ceil(const Q& q) {
