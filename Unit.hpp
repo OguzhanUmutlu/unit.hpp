@@ -2,7 +2,7 @@
  * Unit.hpp
  * A header-only C++20 library for compile-time dimensional analysis and unit conversion.
  *
- * Version: 0.11
+ * Version: 0.12
  * Author:  OguzhanUmutlu
  * GitHub:  https://github.com/OguzhanUmutlu/unit.hpp
  *
@@ -19,7 +19,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 10;
+static constexpr int UNIT_HPP_VERSION_MINOR = 12;
 
 namespace Unit {
     using float_t = double;
@@ -403,37 +403,6 @@ namespace Unit {
         using type = SingleTerm;
     };
 
-    template <typename U, int InheritedExp> struct pure_flatten;
-    template <typename U, int InheritedExp> using pure_flatten_t = pure_flatten<U, InheritedExp>::type;
-
-    template <typename Tuple, int ParentExp> struct pure_flatten_tuple;
-    template <typename Tuple, int ParentExp> using pure_flatten_tuple_t = pure_flatten_tuple<Tuple, ParentExp>::type;
-
-    template <typename... Ts, int ParentExp>
-    struct pure_flatten_tuple<std::tuple<Ts...>, ParentExp> {
-        using type = decltype(std::tuple_cat(pure_flatten_t<Ts, ParentExp>{}...));
-    };
-
-    template <FixedString S, int InheritedExp>
-    struct pure_flatten<BaseUnit<S>, InheritedExp> {
-        using type = std::tuple<Unit<std::tuple<BaseUnit<S>>, InheritedExp>>;
-    };
-
-    template <typename Tpl, int Exp, FixedString Sym, typename R, int InheritedExp>
-    struct pure_flatten<Unit<Tpl, Exp, Sym, R>, InheritedExp> {
-        using type = pure_flatten_tuple_t<Tpl, Exp * InheritedExp>;
-    };
-
-    template <typename U>
-    struct get_dimension {
-        using Flattened = pure_flatten_t<U, 1>;
-        using Merged    = merge_all_t<std::tuple<>, Flattened>;
-        using Filtered  = filter_zero_t<Merged>;
-        using type      = reconstruct_t<Filtered>;
-    };
-
-    template <typename U> using dimension_t = get_dimension<U>::type;
-
     template <typename U1, typename U2, int Sign>
     struct binary_op_result {
         using Terms1   = flatten_t<U1, 1>;
@@ -455,7 +424,6 @@ namespace Unit {
         }
 
         template <typename OtherUnit, typename OtherValue>
-            requires std::is_same_v<dimension_t<ThisUnit>, dimension_t<OtherUnit>>
         explicit(!std::is_same_v<ThisUnit, OtherUnit>) constexpr Quantity(
             const Quantity<OtherUnit, OtherValue>& other
         ) {
@@ -666,7 +634,7 @@ namespace Unit {
         using hour   = compound_unit_q<s, "hour", std::ratio<3600>>;
         using day    = compound_unit_q<s, "day", std::ratio<86400>>;
         using week   = compound_unit_q<s, "week", std::ratio<604800>>;
-        using Hz     = compound_unit_q<base_unit_q<"s", -1>, "Hz">;
+        using Hz     = compound_unit_q<decltype(1 / s{}), "Hz">;
         using N      = compound_unit_q<decltype(kilo<g>{} * m{} / (s{} * s{})), "N">;
         using Pa     = compound_unit_q<decltype(N{} / (m{} * m{})), "Pa">;
         using J      = compound_unit_q<decltype(N{} * m{}), "J">;
@@ -679,10 +647,10 @@ namespace Unit {
         using H      = compound_unit_q<decltype(Ohm{} * s{}), "H">;
         using Wb     = compound_unit_q<decltype(V{} * s{}), "Wb">;
         using Tesla  = compound_unit_q<decltype(Wb{} / (m{} * m{})), "T">;
-        using sr     = compound_unit_q<base_unit_q<"rad", 2>, "sr">;
+        using sr     = compound_unit_q<decltype(rad{} * rad{}), "sr">;
         using lm     = compound_unit_q<decltype(cd{} * sr{}), "lm">;
         using lx     = compound_unit_q<decltype(lm{} / (m{} * m{})), "lx">;
-        using Bq     = compound_unit_q<base_unit_q<"s", -1>, "Bq">;
+        using Bq     = compound_unit_q<decltype(1 / s{}), "Bq">;
         using Gy     = compound_unit_q<decltype(J{} / kilo<g>{}), "Gy">;
         using Sv     = compound_unit_q<decltype(J{} / kilo<g>{}), "Sv">;
         using Kat    = compound_unit_q<decltype(mol{} / s{}), "Kat">;
