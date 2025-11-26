@@ -2,7 +2,7 @@
  * Unit.hpp
  * A header-only C++20 library for compile-time dimensional analysis and unit conversion.
  *
- * Version: 0.12
+ * Version: 0.13
  * Author:  OguzhanUmutlu
  * GitHub:  https://github.com/OguzhanUmutlu/unit.hpp
  *
@@ -19,7 +19,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 12;
+static constexpr int UNIT_HPP_VERSION_MINOR = 13;
 
 namespace Unit {
     using float_t = double;
@@ -298,7 +298,7 @@ namespace Unit {
 
         using type = std::conditional_t<
             !Sym.empty(),
-            std::tuple<Unit<std::tuple<ThisUnit>, EffectiveExp>>,
+            std::tuple<Unit<std::tuple<ThisUnit>, InheritedExp>>,
             flatten_tuple_t<Tpl, EffectiveExp>
         >;
     };
@@ -403,6 +403,40 @@ namespace Unit {
         using type = SingleTerm;
     };
 
+    template <typename U, int InheritedExp> struct decompose;
+    template <typename U, int InheritedExp> using decompose_t = typename decompose<U, InheritedExp>::type;
+
+    template <typename Tuple, int ParentExp> struct decompose_tuple;
+    template <typename Tuple, int ParentExp> using decompose_tuple_t = typename decompose_tuple<Tuple, ParentExp>::type;
+
+    template <typename... Ts, int ParentExp>
+    struct decompose_tuple<std::tuple<Ts...>, ParentExp> {
+        using type = decltype(std::tuple_cat(decompose_t<Ts, ParentExp>{}...));
+    };
+
+    template <FixedString S, int InheritedExp>
+    struct decompose<BaseUnit<S>, InheritedExp> {
+        using type = std::tuple<Unit<std::tuple<BaseUnit<S>>, InheritedExp>>;
+    };
+
+    template <typename Tpl, int Exp, FixedString Sym, typename R, int InheritedExp>
+    struct decompose<Unit<Tpl, Exp, Sym, R>, InheritedExp> {
+        // Multiply exponents: (s^-1)^-1 = s^1
+        static constexpr int EffectiveExp = Exp * InheritedExp;
+        using type                        = decompose_tuple_t<Tpl, EffectiveExp>;
+    };
+
+    template <typename U>
+    struct pure_unit {
+        using Decomposed = decompose_t<U, 1>;
+        using Merged     = merge_all_t<std::tuple<>, Decomposed>;
+        using Filtered   = filter_zero_t<Merged>;
+        using type       = reconstruct_t<Filtered>;
+    };
+
+    template <typename U>
+    using pure_unit_t = typename pure_unit<U>::type;
+
     template <typename U1, typename U2, int Sign>
     struct binary_op_result {
         using Terms1   = flatten_t<U1, 1>;
@@ -424,6 +458,7 @@ namespace Unit {
         }
 
         template <typename OtherUnit, typename OtherValue>
+            requires std::is_same_v<pure_unit_t<ThisUnit>, pure_unit_t<OtherUnit>>
         explicit(!std::is_same_v<ThisUnit, OtherUnit>) constexpr Quantity(
             const Quantity<OtherUnit, OtherValue>& other
         ) {
@@ -432,8 +467,7 @@ namespace Unit {
             } else {
                 constexpr ValueType from_scale = get_unit_scale<ThisUnit>();
                 constexpr ValueType to_scale   = get_unit_scale<OtherUnit>();
-
-                value = static_cast<ValueType>(other.value * (to_scale / from_scale));
+                value                          = static_cast<ValueType>(other.value * (to_scale / from_scale));
             }
         }
 
@@ -529,7 +563,7 @@ namespace Unit {
     template <FixedString Sym, int Exp = 1>
     using base_unit_q = Quantity<base_unit<Sym, Exp>>;
 
-    template <typename U, FixedString Sym, typename Ratio = std::ratio<1>, int Exp = 1>
+    template <typename U, FixedString Sym, typename Ratio = std::ratio<1>, int Exp = U::Exp>
     using compound_unit = Unit<
         typename U::Units,
         Exp,
@@ -537,13 +571,13 @@ namespace Unit {
         Ratio
     >;
 
-    template <typename Q, FixedString Sym, typename Ratio = std::ratio<1>, int Exp = 1>
+    template <typename Q, FixedString Sym, typename Ratio = std::ratio<1>, int Exp = Q::u::Exp>
     using compound_unit_q = Quantity<compound_unit<typename Q::u, Sym, Ratio, Exp>>;
 
-    template <typename U, FixedString Prefix, typename Ratio = std::ratio<1>, int Exp = 1>
+    template <typename U, FixedString Prefix, typename Ratio = std::ratio<1>, int Exp = U::Exp>
     using scaled_unit = compound_unit<U, Prefix + get_symbol<U>::value, Ratio, Exp>;
 
-    template <typename Q, FixedString Prefix, typename Ratio = std::ratio<1>, int Exp = 1>
+    template <typename Q, FixedString Prefix, typename Ratio = std::ratio<1>, int Exp = Q::u::Exp>
     using scaled_unit_q = Quantity<scaled_unit<typename Q::u, Prefix, Ratio, Exp>>;
 
     namespace math {
