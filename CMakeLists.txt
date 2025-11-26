@@ -7,4 +7,6 @@ include_directories(.)
 
 add_executable(unit_hpp
     test.cpp
-    Unit.hpp)
+    Unit.hpp
+        Vector2.hpp
+        Vector3.hpp)
