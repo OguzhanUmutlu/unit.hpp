@@ -9,7 +9,8 @@ in a massive framework — this is the solution.
 
 Drop in one header. Get full-power dimensional safety.
 
-Optionally you can include the **Vector2.hpp** and **Vector3.hpp** headers for unit-safe 2D/3D vector math.
+Optionally you can include the **Vector.hpp** header for unit-safe vectors and include **Matrix.hpp**
+for unit-safe matrices.
 
 ---
 
