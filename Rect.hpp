@@ -1,7 +1,7 @@
 #pragma once
 #include <iostream>
 #include <algorithm>
-#include "Vector.hpp"
+#include "Vector2.hpp"
 
 template <typename T>
 struct Rect {
@@ -58,7 +58,6 @@ struct Rect {
         width  = size.x();
         height = size.y();
     }
-
 
     constexpr bool contains(const Vector2<T>& point) const {
         return point.x() >= x && point.x() < (x + width) &&

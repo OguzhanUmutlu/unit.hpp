@@ -129,18 +129,6 @@ struct Vector {
         return sum;
     }
 
-    constexpr auto cross(const Vector& other) const requires (N == 3) {
-        return Vector<3, T>{
-            y() * other.z() - z() * other.y(),
-            z() * other.x() - x() * other.z(),
-            x() * other.y() - y() * other.x()
-        };
-    }
-
-    constexpr auto cross(const Vector& other) const requires (N == 2) {
-        return x() * other.y() - y() * other.x();
-    }
-
     constexpr auto componentWiseMul(const Vector& other) const {
         Vector result;
         for (size_t i = 0; i < N; ++i) result[i] = components[i] * other[i];
@@ -180,23 +168,6 @@ struct Vector {
         return Unit::defaults::rad{std::acos(val)};
     }
 
-    constexpr auto perpendicular() const requires (N == 2) {
-        return Vector<2, T>{-components[1], components[0]};
-    }
-
-    constexpr auto angle() const requires (N == 2) {
-        return Unit::defaults::rad{std::atan2(components[1], components[0])};
-    }
-
-    constexpr Vector rotatedBy(auto phi) const requires (N == 2) {
-        auto cos_phi = Unit::defaults::cos(phi);
-        auto sin_phi = Unit::defaults::sin(phi);
-        return {
-            components[0] * cos_phi - components[1] * sin_phi,
-            components[0] * sin_phi + components[1] * cos_phi
-        };
-    }
-
     constexpr auto projectedOnto(const Vector& axis) const {
         auto axis_len_sq = axis.lengthSquared();
         if (axis_len_sq == 0) return Vector{};
@@ -217,7 +188,3 @@ struct Vector {
         return vec * scalar;
     }
 };
-
-template <typename T> using Vector2 = Vector<2, T>;
-template <typename T> using Vector3 = Vector<3, T>;
-template <typename T> using Vector4 = Vector<4, T>;
