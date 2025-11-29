@@ -93,19 +93,19 @@ The library ships with a broad set of ready-to-use units — no configuration re
 
 ## **Base Units**
 
-| Unit    | Literal | Description              |
-|---------|---------|--------------------------|
-| meter   | `_m`    | length                   |
-| second  | `_s`    | time                     |
-| gram    | `_g`    | mass                     |
-| ampere  | `_A`    | electric current         |
-| kelvin  | `_K`    | temperature              |
-| mole    | `_mol`  | amount of substance      |
-| candela | `_cd`   | luminous intensity       |
-| radian  | `_rad`  | angle                    |
-| degree  | `_deg`  | angle (converted to rad) |
-| gradian | `_grad` | angle (converted to rad) |
-| pixel   | `_px`   | pixel count (unsigned)   |
+| Unit    | Literal | Description            |
+|---------|---------|------------------------|
+| meter   | `_m`    | length                 |
+| second  | `_s`    | time                   |
+| gram    | `_g`    | mass                   |
+| ampere  | `_A`    | electric current       |
+| kelvin  | `_K`    | temperature            |
+| mole    | `_mol`  | amount of substance    |
+| candela | `_cd`   | luminous intensity     |
+| radian  | `_rad`  | angle                  |
+| degree  | `_deg`  | angle                  |
+| gradian | `_grad` | angle                  |
+| pixel   | `_px`   | pixel count (unsigned) |
 
 ---
 
@@ -220,7 +220,7 @@ identity for storage and printing.
 Angles are **real unit types**:
 
 ```cpp
-rad a = 90.0_deg;  // auto-converted
+rad a{90.0_deg}; // Requires explicit conversion as it does a runtime conversion (In this case it's compile-time)
 rad b = 1.0_rad;
 
 auto s = sin(a);
