@@ -130,6 +130,13 @@ Every SI base unit supports:
 | n      | nano   | 10⁻⁹  |
 | p      | pico   | 10⁻¹² |
 | f      | femto  | 10⁻¹⁵ |
+| Ki     | kibi   | 2¹⁰   |
+| Mi     | mebi   | 2²⁰   |
+| Gi     | gibi   | 2³⁰   |
+| Ti     | tebi   | 2⁴⁰   |
+| Pi     | pebi   | 2⁵⁰   |
+| Ei     | exbi   | 2⁶⁰   |
+
 
 Example:
 

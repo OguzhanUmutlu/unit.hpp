@@ -2,7 +2,7 @@
 * Unit.hpp
  * A header-only C++20 library for compile-time dimensional analysis and unit conversion.
  *
- * Version: 0.14
+ * Version: 0.15
  * Author:  OguzhanUmutlu
  * GitHub:  https://github.com/OguzhanUmutlu/unit.hpp
  *
@@ -19,7 +19,7 @@
 #include <ratio>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 14;
+static constexpr int UNIT_HPP_VERSION_MINOR = 15;
 
 namespace Unit {
     using float_t = double;
@@ -629,6 +629,13 @@ namespace Unit {
         template <typename Q, int E = 1> using peta  = scaled_unit_q<Q, "P", std::peta, E>;
         template <typename Q, int E = 1> using exa   = scaled_unit_q<Q, "E", std::exa, E>;
 
+        template <typename Q, int E = 1> using kibi = scaled_unit_q<Q, "Ki", std::ratio<1'024>, E>;
+        template <typename Q, int E = 1> using mebi = scaled_unit_q<Q, "Mi", std::ratio<1'048'576>, E>;
+        template <typename Q, int E = 1> using gibi = scaled_unit_q<Q, "Gi", std::ratio<1'073'741'824>, E>;
+        template <typename Q, int E = 1> using tebi = scaled_unit_q<Q, "Ti", std::ratio<1'099'511'627'776>, E>;
+        template <typename Q, int E = 1> using pebi = scaled_unit_q<Q, "Pi", std::ratio<1'125'899'906'842'624>, E>;
+        template <typename Q, int E = 1> using exbi = scaled_unit_q<Q, "Ei", std::ratio<1'152'921'504'606'846'976>, E>;
+
 #define __unithpp_literal_(TYPE, SYM) \
         constexpr auto operator ""_##SYM(long double val) { return TYPE(static_cast<float_t>(val)); } \
         constexpr auto operator ""_##SYM(unsigned long long val) { return TYPE(static_cast<float_t>(val)); }
@@ -649,7 +656,13 @@ namespace Unit {
     __unithpp_literal_(giga<UNIT>, G##UNIT) \
     __unithpp_literal_(tera<UNIT>, T##UNIT) \
     __unithpp_literal_(peta<UNIT>, P##UNIT) \
-    __unithpp_literal_(exa<UNIT>, E##UNIT)
+    __unithpp_literal_(exa<UNIT>, E##UNIT) \
+    __unithpp_literal_(kibi<UNIT>, Ki##UNIT) \
+    __unithpp_literal_(mebi<UNIT>, Mi##UNIT) \
+    __unithpp_literal_(gibi<UNIT>, Gi##UNIT) \
+    __unithpp_literal_(tebi<UNIT>, Ti##UNIT) \
+    __unithpp_literal_(pebi<UNIT>, Pi##UNIT) \
+    __unithpp_literal_(exbi<UNIT>, Ei##UNIT)
 #define __unithpp_literals(UNIT) \
     __unithpp_literal(UNIT) \
     __unithpp_scales(UNIT)
