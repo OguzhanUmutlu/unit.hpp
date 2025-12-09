@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <cmath>
 #include <ratio>
+#include <chrono>
+#include <thread>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
 static constexpr int UNIT_HPP_VERSION_MINOR = 15;
@@ -859,9 +861,6 @@ namespace Unit {
 
 
     namespace extra_functions {
-#include <chrono>
-#include <thread>
-
         template <typename U>
         static void sleep(Quantity<U> v) {
             std::this_thread::sleep_for(std::chrono::nanoseconds{
