@@ -21,7 +21,7 @@
 #include <thread>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 15;
+static constexpr int UNIT_HPP_VERSION_MINOR = 16;
 
 namespace Unit {
     using float_t = double;
