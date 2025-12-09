@@ -2,7 +2,7 @@
 * Unit.hpp
  * A header-only C++20 library for compile-time dimensional analysis and unit conversion.
  *
- * Version: 0.15
+ * Version: 0.16
  * Author:  OguzhanUmutlu
  * GitHub:  https://github.com/OguzhanUmutlu/unit.hpp
  *
@@ -39,13 +39,15 @@ namespace Unit {
 
         friend auto operator<=>(const FixedString&, const FixedString&) = default;
 
-        template <size_t M> constexpr bool operator==(const FixedString<M>& rhs) const {
+        template <size_t M>
+        constexpr bool operator==(const FixedString<M>& rhs) const {
             if constexpr (N != M) return false;
             for (size_t i = 0; i < N; ++i) if (buf[i] != rhs.buf[i]) return false;
             return true;
         }
 
-        template <size_t M> constexpr auto operator+(const FixedString<M>& rhs) const {
+        template <size_t M>
+        constexpr auto operator+(const FixedString<M>& rhs) const {
             char combined_buf[N + M - 1]{};
             std::copy_n(buf, N - 1, combined_buf);
             std::copy_n(rhs.buf, M, combined_buf + N - 1);
@@ -57,11 +59,13 @@ namespace Unit {
         }
     };
 
-    template <size_t N> std::ostream& operator<<(std::ostream& os, const FixedString<N>& fs) {
+    template <size_t N>
+    std::ostream& operator<<(std::ostream& os, const FixedString<N>& fs) {
         return os << fs.buf;
     }
 
-    template <size_t N> FixedString(const char (&)[N]) -> FixedString<N>;
+    template <size_t N>
+    FixedString(const char (&)[N]) -> FixedString<N>;
 
     template <FixedString Symbol>
     struct BaseUnit;
@@ -72,22 +76,27 @@ namespace Unit {
     template <typename ThisUnit, typename ValueType = float_t>
     struct Quantity;
 
-    template <typename T> struct is_base_unit : std::false_type {
+    template <typename T>
+    struct is_base_unit : std::false_type {
     };
 
-    template <FixedString S> struct is_base_unit<BaseUnit<S>> : std::true_type {
+    template <FixedString S>
+    struct is_base_unit<BaseUnit<S>> : std::true_type {
     };
 
-    template <typename T> inline constexpr auto is_base_unit_v = is_base_unit<T>::value;
+    template <typename T>
+    inline constexpr auto is_base_unit_v = is_base_unit<T>::value;
 
-    template <typename T> struct is_unit : std::false_type {
+    template <typename T>
+    struct is_unit : std::false_type {
     };
 
     template <typename Tpl, int E, FixedString S, typename R>
     struct is_unit<Unit<Tpl, E, S, R>> : std::true_type {
     };
 
-    template <typename T> struct get_exponent {
+    template <typename T>
+    struct get_exponent {
         static constexpr int value = 1;
     };
 
@@ -96,10 +105,13 @@ namespace Unit {
         static constexpr int value = E;
     };
 
-    template <typename T> inline constexpr auto get_exponent_v = get_exponent<T>::value;
+    template <typename T>
+    inline constexpr auto get_exponent_v = get_exponent<T>::value;
 
-    template <typename T> struct get_symbol;
-    template <typename T> inline constexpr auto get_symbol_v = get_symbol<T>::value;
+    template <typename T>
+    struct get_symbol;
+    template <typename T>
+    inline constexpr auto get_symbol_v = get_symbol<T>::value;
 
     template <FixedString S>
     struct get_symbol<BaseUnit<S>> {
@@ -123,7 +135,7 @@ namespace Unit {
         float_t res = 1.0;
         if (exp < 0) {
             base = 1.0 / base;
-            exp  = -exp;
+            exp = -exp;
         }
         while (exp > 0) {
             if (exp % 2 == 1) res *= base;
@@ -142,10 +154,10 @@ namespace Unit {
 
     template <typename Tpl, int Exponent, FixedString Symbol, typename Ratio>
     struct Unit {
-        using Units               = Tpl;
-        static constexpr int Exp  = Exponent;
+        using Units = Tpl;
+        static constexpr int Exp = Exponent;
         static constexpr auto Sym = Symbol;
-        using R                   = Ratio;
+        using R = Ratio;
     };
 
     template <typename T>
@@ -193,7 +205,7 @@ namespace Unit {
                 }
             }
 
-            constexpr int exp     = get_exponent_v<T>;
+            constexpr int exp = get_exponent_v<T>;
             constexpr int abs_exp = (exp < 0) ? -exp : exp;
 
             if constexpr (abs_exp != 1) {
@@ -228,7 +240,7 @@ namespace Unit {
 
                     constexpr size_t N = std::tuple_size_v<Tuple>;
 
-                    bool has_numerator   = false;
+                    bool has_numerator = false;
                     bool has_denominator = false;
 
                     [&]<size_t... I>(std::index_sequence<I...>) {
@@ -272,19 +284,25 @@ namespace Unit {
         }
     }
 
-    template <typename T1, typename T2> struct tuple_cat_type;
-    template <typename T1, typename T2> using tuple_cat_type_t = tuple_cat_type<T1, T2>::type;
+    template <typename T1, typename T2>
+    struct tuple_cat_type;
+    template <typename T1, typename T2>
+    using tuple_cat_type_t = tuple_cat_type<T1, T2>::type;
 
     template <typename... Ts1, typename... Ts2>
     struct tuple_cat_type<std::tuple<Ts1...>, std::tuple<Ts2...>> {
         using type = std::tuple<Ts1..., Ts2...>;
     };
 
-    template <typename U, int InheritedExp> struct flatten;
-    template <typename U, int InheritedExp> using flatten_t = flatten<U, InheritedExp>::type;
+    template <typename U, int InheritedExp>
+    struct flatten;
+    template <typename U, int InheritedExp>
+    using flatten_t = flatten<U, InheritedExp>::type;
 
-    template <typename Tuple, int ParentExp> struct flatten_tuple;
-    template <typename Tuple, int ParentExp> using flatten_tuple_t = flatten_tuple<Tuple, ParentExp>::type;
+    template <typename Tuple, int ParentExp>
+    struct flatten_tuple;
+    template <typename Tuple, int ParentExp>
+    using flatten_tuple_t = flatten_tuple<Tuple, ParentExp>::type;
 
     template <typename... Ts, int ParentExp>
     struct flatten_tuple<std::tuple<Ts...>, ParentExp> {
@@ -299,7 +317,7 @@ namespace Unit {
     template <typename Tpl, int Exp, FixedString Sym, typename R, int InheritedExp>
     struct flatten<Unit<Tpl, Exp, Sym, R>, InheritedExp> {
         static constexpr int EffectiveExp = Exp * InheritedExp;
-        using ThisUnit                    = Unit<Tpl, Exp, Sym, R>;
+        using ThisUnit = Unit<Tpl, Exp, Sym, R>;
 
         using type = std::conditional_t<
             !Sym.empty(),
@@ -310,8 +328,8 @@ namespace Unit {
 
     template <typename Term1, typename Term2>
     struct is_same_basis {
-        using B1                    = std::tuple_element_t<0, typename Term1::Units>;
-        using B2                    = std::tuple_element_t<0, typename Term2::Units>;
+        using B1 = std::tuple_element_t<0, typename Term1::Units>;
+        using B2 = std::tuple_element_t<0, typename Term2::Units>;
         static constexpr bool value = std::is_same_v<B1, B2>;
     };
 
@@ -320,12 +338,13 @@ namespace Unit {
 
     template <typename Term, int ExtraExp>
     struct add_exp_to_term {
-        using Basis                 = std::tuple_element_t<0, typename Term::Units>;
+        using Basis = std::tuple_element_t<0, typename Term::Units>;
         static constexpr int OldExp = Term::Exp;
-        using type                  = Unit<std::tuple<Basis>, OldExp + ExtraExp>;
+        using type = Unit<std::tuple<Basis>, OldExp + ExtraExp>;
     };
 
-    template <typename Term, int ExtraExp> using add_exp_to_term_t = add_exp_to_term<Term, ExtraExp>::type;
+    template <typename Term, int ExtraExp>
+    using add_exp_to_term_t = add_exp_to_term<Term, ExtraExp>::type;
 
     template <typename Term1, typename Term2>
     struct term_less {
@@ -333,10 +352,10 @@ namespace Unit {
         using B2 = std::tuple_element_t<0, typename Term2::Units>;
 
         static constexpr bool value = []() {
-            constexpr auto s1       = B1::Sym;
-            constexpr auto s2       = B2::Sym;
-            constexpr size_t N1     = sizeof(s1.buf);
-            constexpr size_t N2     = sizeof(s2.buf);
+            constexpr auto s1 = B1::Sym;
+            constexpr auto s2 = B2::Sym;
+            constexpr size_t N1 = sizeof(s1.buf);
+            constexpr size_t N2 = sizeof(s2.buf);
             constexpr size_t common = (N1 < N2) ? N1 : N2;
 
             for (size_t i = 0; i < common; ++i) {
@@ -348,11 +367,14 @@ namespace Unit {
         }();
     };
 
-    template <typename Term1, typename Term2> inline constexpr auto term_less_v = term_less<Term1, Term2>::value;
+    template <typename Term1, typename Term2>
+    inline constexpr auto term_less_v = term_less<Term1, Term2>::value;
 
 
-    template <typename AccumTuple, typename Term> struct merge_one;
-    template <typename AccumTuple, typename Term> using merge_one_t = merge_one<AccumTuple, Term>::type;
+    template <typename AccumTuple, typename Term>
+    struct merge_one;
+    template <typename AccumTuple, typename Term>
+    using merge_one_t = merge_one<AccumTuple, Term>::type;
 
     template <typename Term>
     struct merge_one<std::tuple<>, Term> {
@@ -372,8 +394,10 @@ namespace Unit {
         >;
     };
 
-    template <typename Accum, typename Remaining> struct merge_all;
-    template <typename Accum, typename Remaining> using merge_all_t = merge_all<Accum, Remaining>::type;
+    template <typename Accum, typename Remaining>
+    struct merge_all;
+    template <typename Accum, typename Remaining>
+    using merge_all_t = merge_all<Accum, Remaining>::type;
 
     template <typename Accum>
     struct merge_all<Accum, std::tuple<>> {
@@ -383,42 +407,51 @@ namespace Unit {
     template <typename Accum, typename Head, typename... Tail>
     struct merge_all<Accum, std::tuple<Head, Tail...>> {
         using NextAccum = merge_one_t<Accum, Head>;
-        using type      = merge_all_t<NextAccum, std::tuple<Tail...>>;
+        using type = merge_all_t<NextAccum, std::tuple<Tail...>>;
     };
 
-    template <typename Tuple> struct filter_zero;
-    template <typename Tuple> using filter_zero_t = filter_zero<Tuple>::type;
+    template <typename Tuple>
+    struct filter_zero;
+    template <typename Tuple>
+    using filter_zero_t = filter_zero<Tuple>::type;
 
-    template <> struct filter_zero<std::tuple<>> {
+    template <>
+    struct filter_zero<std::tuple<>> {
         using type = std::tuple<>;
     };
 
     template <typename Head, typename... Tail>
     struct filter_zero<std::tuple<Head, Tail...>> {
         using TailFiltered = filter_zero_t<std::tuple<Tail...>>;
-        using type         = std::conditional_t<
+        using type = std::conditional_t<
             Head::Exp == 0,
             TailFiltered,
             tuple_cat_type_t<std::tuple<Head>, TailFiltered>
         >;
     };
 
-    template <typename Tuple> struct reconstruct {
+    template <typename Tuple>
+    struct reconstruct {
         using type = Unit<Tuple>;
     };
 
-    template <typename Tuple> using reconstruct_t = reconstruct<Tuple>::type;
+    template <typename Tuple>
+    using reconstruct_t = reconstruct<Tuple>::type;
 
     template <typename SingleTerm>
     struct reconstruct<std::tuple<SingleTerm>> {
         using type = SingleTerm;
     };
 
-    template <typename U, int InheritedExp> struct decompose;
-    template <typename U, int InheritedExp> using decompose_t = decompose<U, InheritedExp>::type;
+    template <typename U, int InheritedExp>
+    struct decompose;
+    template <typename U, int InheritedExp>
+    using decompose_t = decompose<U, InheritedExp>::type;
 
-    template <typename Tuple, int ParentExp> struct decompose_tuple;
-    template <typename Tuple, int ParentExp> using decompose_tuple_t = decompose_tuple<Tuple, ParentExp>::type;
+    template <typename Tuple, int ParentExp>
+    struct decompose_tuple;
+    template <typename Tuple, int ParentExp>
+    using decompose_tuple_t = decompose_tuple<Tuple, ParentExp>::type;
 
     template <typename... Ts, int ParentExp>
     struct decompose_tuple<std::tuple<Ts...>, ParentExp> {
@@ -440,9 +473,9 @@ namespace Unit {
     template <typename U>
     struct pure_unit {
         using Decomposed = decompose_t<U, 1>;
-        using Merged     = merge_all_t<std::tuple<>, Decomposed>;
-        using Filtered   = filter_zero_t<Merged>;
-        using type       = reconstruct_t<Filtered>;
+        using Merged = merge_all_t<std::tuple<>, Decomposed>;
+        using Filtered = filter_zero_t<Merged>;
+        using type = reconstruct_t<Filtered>;
     };
 
     template <typename U>
@@ -450,15 +483,16 @@ namespace Unit {
 
     template <typename U1, typename U2, int Sign>
     struct binary_op_result {
-        using Terms1   = flatten_t<U1, 1>;
-        using Terms2   = flatten_t<U2, Sign>;
+        using Terms1 = flatten_t<U1, 1>;
+        using Terms2 = flatten_t<U2, Sign>;
         using Combined = tuple_cat_type_t<Terms1, Terms2>;
-        using Merged   = merge_all_t<std::tuple<>, Combined>;
+        using Merged = merge_all_t<std::tuple<>, Combined>;
         using Filtered = filter_zero_t<Merged>;
-        using type     = reconstruct_t<Filtered>;
+        using type = reconstruct_t<Filtered>;
     };
 
-    template <typename U1, typename U2, int Sign> using binary_op_result_t = binary_op_result<U1, U2, Sign>::type;
+    template <typename U1, typename U2, int Sign>
+    using binary_op_result_t = binary_op_result<U1, U2, Sign>::type;
 
     template <typename ThisUnit, typename ValueType>
     struct Quantity {
@@ -477,8 +511,8 @@ namespace Unit {
                 value = static_cast<ValueType>(other.value);
             } else {
                 constexpr ValueType from_scale = get_unit_scale<ThisUnit>();
-                constexpr ValueType to_scale   = get_unit_scale<OtherUnit>();
-                value                          = static_cast<ValueType>(other.value * (to_scale / from_scale));
+                constexpr ValueType to_scale = get_unit_scale<OtherUnit>();
+                value = static_cast<ValueType>(other.value * (to_scale / from_scale));
             }
         }
 
@@ -514,7 +548,7 @@ namespace Unit {
 
         friend constexpr auto operator/(ValueType lhs, const Quantity& rhs) {
             using Dimensionless = Unit<std::tuple<>, 0>;
-            using ResultUnit    = binary_op_result_t<Dimensionless, ThisUnit, -1>;
+            using ResultUnit = binary_op_result_t<Dimensionless, ThisUnit, -1>;
             return Quantity<ResultUnit, ValueType>(lhs / rhs.value);
         }
 
@@ -592,19 +626,23 @@ namespace Unit {
     using scaled_unit_q = Quantity<scaled_unit<typename Q::u, Prefix, Ratio, Exp>>;
 
     namespace math {
-        template <typename Q> constexpr auto abs(const Q& q) {
+        template <typename Q>
+        constexpr auto abs(const Q& q) {
             return Q(std::abs(q.value));
         }
 
-        template <typename Q> constexpr auto fmod(const Q& q1, const Q& q2) {
+        template <typename Q>
+        constexpr auto fmod(const Q& q1, const Q& q2) {
             return Q(std::fmod(q1.value, q2.value));
         }
 
-        template <typename Q> constexpr auto ceil(const Q& q) {
+        template <typename Q>
+        constexpr auto ceil(const Q& q) {
             return Q(std::ceil(q.value));
         }
 
-        template <typename Q> constexpr auto floor(const Q& q) {
+        template <typename Q>
+        constexpr auto floor(const Q& q) {
             return Q(std::floor(q.value));
         }
     }
@@ -612,29 +650,51 @@ namespace Unit {
     namespace defaults {
         using namespace math;
 
-        template <typename Q, int E = 1> using atto  = scaled_unit_q<Q, "a", std::atto, E>;
-        template <typename Q, int E = 1> using femto = scaled_unit_q<Q, "f", std::femto, E>;
-        template <typename Q, int E = 1> using pico  = scaled_unit_q<Q, "p", std::pico, E>;
-        template <typename Q, int E = 1> using nano  = scaled_unit_q<Q, "n", std::nano, E>;
-        template <typename Q, int E = 1> using micro = scaled_unit_q<Q, "μ", std::micro, E>;
-        template <typename Q, int E = 1> using milli = scaled_unit_q<Q, "m", std::milli, E>;
-        template <typename Q, int E = 1> using centi = scaled_unit_q<Q, "c", std::centi, E>;
-        template <typename Q, int E = 1> using deci  = scaled_unit_q<Q, "d", std::deci, E>;
-        template <typename Q, int E = 1> using deca  = scaled_unit_q<Q, "da", std::deca, E>;
-        template <typename Q, int E = 1> using hecto = scaled_unit_q<Q, "h", std::hecto, E>;
-        template <typename Q, int E = 1> using kilo  = scaled_unit_q<Q, "k", std::kilo, E>;
-        template <typename Q, int E = 1> using mega  = scaled_unit_q<Q, "M", std::mega, E>;
-        template <typename Q, int E = 1> using giga  = scaled_unit_q<Q, "G", std::giga, E>;
-        template <typename Q, int E = 1> using tera  = scaled_unit_q<Q, "T", std::tera, E>;
-        template <typename Q, int E = 1> using peta  = scaled_unit_q<Q, "P", std::peta, E>;
-        template <typename Q, int E = 1> using exa   = scaled_unit_q<Q, "E", std::exa, E>;
+        template <typename Q, int E = 1>
+        using atto = scaled_unit_q<Q, "a", std::atto, E>;
+        template <typename Q, int E = 1>
+        using femto = scaled_unit_q<Q, "f", std::femto, E>;
+        template <typename Q, int E = 1>
+        using pico = scaled_unit_q<Q, "p", std::pico, E>;
+        template <typename Q, int E = 1>
+        using nano = scaled_unit_q<Q, "n", std::nano, E>;
+        template <typename Q, int E = 1>
+        using micro = scaled_unit_q<Q, "μ", std::micro, E>;
+        template <typename Q, int E = 1>
+        using milli = scaled_unit_q<Q, "m", std::milli, E>;
+        template <typename Q, int E = 1>
+        using centi = scaled_unit_q<Q, "c", std::centi, E>;
+        template <typename Q, int E = 1>
+        using deci = scaled_unit_q<Q, "d", std::deci, E>;
+        template <typename Q, int E = 1>
+        using deca = scaled_unit_q<Q, "da", std::deca, E>;
+        template <typename Q, int E = 1>
+        using hecto = scaled_unit_q<Q, "h", std::hecto, E>;
+        template <typename Q, int E = 1>
+        using kilo = scaled_unit_q<Q, "k", std::kilo, E>;
+        template <typename Q, int E = 1>
+        using mega = scaled_unit_q<Q, "M", std::mega, E>;
+        template <typename Q, int E = 1>
+        using giga = scaled_unit_q<Q, "G", std::giga, E>;
+        template <typename Q, int E = 1>
+        using tera = scaled_unit_q<Q, "T", std::tera, E>;
+        template <typename Q, int E = 1>
+        using peta = scaled_unit_q<Q, "P", std::peta, E>;
+        template <typename Q, int E = 1>
+        using exa = scaled_unit_q<Q, "E", std::exa, E>;
 
-        template <typename Q, int E = 1> using kibi = scaled_unit_q<Q, "Ki", std::ratio<1'024>, E>;
-        template <typename Q, int E = 1> using mebi = scaled_unit_q<Q, "Mi", std::ratio<1'048'576>, E>;
-        template <typename Q, int E = 1> using gibi = scaled_unit_q<Q, "Gi", std::ratio<1'073'741'824>, E>;
-        template <typename Q, int E = 1> using tebi = scaled_unit_q<Q, "Ti", std::ratio<1'099'511'627'776>, E>;
-        template <typename Q, int E = 1> using pebi = scaled_unit_q<Q, "Pi", std::ratio<1'125'899'906'842'624>, E>;
-        template <typename Q, int E = 1> using exbi = scaled_unit_q<Q, "Ei", std::ratio<1'152'921'504'606'846'976>, E>;
+        template <typename Q, int E = 1>
+        using kibi = scaled_unit_q<Q, "Ki", std::ratio<1'024>, E>;
+        template <typename Q, int E = 1>
+        using mebi = scaled_unit_q<Q, "Mi", std::ratio<1'048'576>, E>;
+        template <typename Q, int E = 1>
+        using gibi = scaled_unit_q<Q, "Gi", std::ratio<1'073'741'824>, E>;
+        template <typename Q, int E = 1>
+        using tebi = scaled_unit_q<Q, "Ti", std::ratio<1'099'511'627'776>, E>;
+        template <typename Q, int E = 1>
+        using pebi = scaled_unit_q<Q, "Pi", std::ratio<1'125'899'906'842'624>, E>;
+        template <typename Q, int E = 1>
+        using exbi = scaled_unit_q<Q, "Ei", std::ratio<1'152'921'504'606'846'976>, E>;
 
 #define __unithpp_literal_(TYPE, SYM) \
         constexpr auto operator ""_##SYM(long double val) { return TYPE(static_cast<float_t>(val)); } \
@@ -667,52 +727,52 @@ namespace Unit {
     __unithpp_literal(UNIT) \
     __unithpp_scales(UNIT)
 
-        using m   = base_unit_q<"m">;
-        using g   = base_unit_q<"g">;
-        using s   = base_unit_q<"s">;
+        using m = base_unit_q<"m">;
+        using g = base_unit_q<"g">;
+        using s = base_unit_q<"s">;
         using mol = base_unit_q<"mol">;
-        using K   = base_unit_q<"K">;
-        using A   = base_unit_q<"A">;
-        using cd  = base_unit_q<"cd">;
+        using K = base_unit_q<"K">;
+        using A = base_unit_q<"A">;
+        using cd = base_unit_q<"cd">;
         using rad = base_unit_q<"rad">;
-        using px  = Quantity<base_unit<"px">, unsigned>;
+        using px = Quantity<base_unit<"px">, unsigned>;
 
-        using L      = compound_unit_q<deci<m, 3>, "L">;
-        using deg    = compound_unit_q<rad, "deg", std::ratio<17453292519943296, 1000000000000000000>>;
-        using grad   = compound_unit_q<rad, "grad", std::ratio<15707963267948966, 1000000000000000000>>;
-        using mi     = compound_unit_q<m, "mi", std::ratio<1609344, 1000>>;
-        using ft     = compound_unit_q<m, "ft", std::ratio<3048, 10000>>;
-        using in     = compound_unit_q<m, "in", std::ratio<254, 10000>>;
-        using yd     = compound_unit_q<m, "yd", std::ratio<9144, 10000>>;
-        using oz     = compound_unit_q<g, "oz", std::ratio<28349523125, 1000000000>>;
-        using lb     = compound_unit_q<g, "lb", std::ratio<45359237, 100>>;
-        using ton    = compound_unit_q<g, "ton", std::ratio<90718474, 10>>;
-        using gal    = compound_unit_q<L, "gal", std::ratio<3785411784, 10000000>>;
+        using L = compound_unit_q<deci<m, 3>, "L">;
+        using deg = compound_unit_q<rad, "deg", std::ratio<17453292519943296, 1000000000000000000>>;
+        using grad = compound_unit_q<rad, "grad", std::ratio<15707963267948966, 1000000000000000000>>;
+        using mi = compound_unit_q<m, "mi", std::ratio<1609344, 1000>>;
+        using ft = compound_unit_q<m, "ft", std::ratio<3048, 10000>>;
+        using in = compound_unit_q<m, "in", std::ratio<254, 10000>>;
+        using yd = compound_unit_q<m, "yd", std::ratio<9144, 10000>>;
+        using oz = compound_unit_q<g, "oz", std::ratio<28349523125, 1000000000>>;
+        using lb = compound_unit_q<g, "lb", std::ratio<45359237, 100>>;
+        using ton = compound_unit_q<g, "ton", std::ratio<90718474, 10>>;
+        using gal = compound_unit_q<L, "gal", std::ratio<3785411784, 10000000>>;
         using minute = compound_unit_q<s, "minute", std::ratio<60>>;
-        using hour   = compound_unit_q<s, "hour", std::ratio<3600>>;
-        using day    = compound_unit_q<s, "day", std::ratio<86400>>;
-        using week   = compound_unit_q<s, "week", std::ratio<604800>>;
-        using Hz     = compound_unit_q<decltype(1 / s{}), "Hz">;
-        using N      = compound_unit_q<decltype(kilo<g>{} * m{} / (s{} * s{})), "N">;
-        using Pa     = compound_unit_q<decltype(N{} / (m{} * m{})), "Pa">;
-        using J      = compound_unit_q<decltype(N{} * m{}), "J">;
-        using W      = compound_unit_q<decltype(J{} / s{}), "W">;
-        using C      = compound_unit_q<decltype(A{} * s{}), "C">;
-        using V      = compound_unit_q<decltype(W{} / A{}), "V">;
-        using Ohm    = compound_unit_q<decltype(V{} / A{}), "Ohm">;
-        using S      = compound_unit_q<decltype(A{} / V{}), "S">;
-        using F      = compound_unit_q<decltype(C{} / V{}), "F">;
-        using H      = compound_unit_q<decltype(Ohm{} * s{}), "H">;
-        using Wb     = compound_unit_q<decltype(V{} * s{}), "Wb">;
-        using Tesla  = compound_unit_q<decltype(Wb{} / (m{} * m{})), "T">;
-        using sr     = compound_unit_q<decltype(rad{} * rad{}), "sr">;
-        using lm     = compound_unit_q<decltype(cd{} * sr{}), "lm">;
-        using lx     = compound_unit_q<decltype(lm{} / (m{} * m{})), "lx">;
-        using Bq     = compound_unit_q<decltype(1 / s{}), "Bq">;
-        using Gy     = compound_unit_q<decltype(J{} / kilo<g>{}), "Gy">;
-        using Sv     = compound_unit_q<decltype(J{} / kilo<g>{}), "Sv">;
-        using Kat    = compound_unit_q<decltype(mol{} / s{}), "Kat">;
-        using dyn    = compound_unit_q<decltype(g{} * m{} / (s{} * s{})), "dyn">;
+        using hour = compound_unit_q<s, "hour", std::ratio<3600>>;
+        using day = compound_unit_q<s, "day", std::ratio<86400>>;
+        using week = compound_unit_q<s, "week", std::ratio<604800>>;
+        using Hz = compound_unit_q<decltype(1 / s{}), "Hz">;
+        using N = compound_unit_q<decltype(kilo<g>{} * m{} / (s{} * s{})), "N">;
+        using Pa = compound_unit_q<decltype(N{} / (m{} * m{})), "Pa">;
+        using J = compound_unit_q<decltype(N{} * m{}), "J">;
+        using W = compound_unit_q<decltype(J{} / s{}), "W">;
+        using C = compound_unit_q<decltype(A{} * s{}), "C">;
+        using V = compound_unit_q<decltype(W{} / A{}), "V">;
+        using Ohm = compound_unit_q<decltype(V{} / A{}), "Ohm">;
+        using S = compound_unit_q<decltype(A{} / V{}), "S">;
+        using F = compound_unit_q<decltype(C{} / V{}), "F">;
+        using H = compound_unit_q<decltype(Ohm{} * s{}), "H">;
+        using Wb = compound_unit_q<decltype(V{} * s{}), "Wb">;
+        using Tesla = compound_unit_q<decltype(Wb{} / (m{} * m{})), "T">;
+        using sr = compound_unit_q<decltype(rad{} * rad{}), "sr">;
+        using lm = compound_unit_q<decltype(cd{} * sr{}), "lm">;
+        using lx = compound_unit_q<decltype(lm{} / (m{} * m{})), "lx">;
+        using Bq = compound_unit_q<decltype(1 / s{}), "Bq">;
+        using Gy = compound_unit_q<decltype(J{} / kilo<g>{}), "Gy">;
+        using Sv = compound_unit_q<decltype(J{} / kilo<g>{}), "Sv">;
+        using Kat = compound_unit_q<decltype(mol{} / s{}), "Kat">;
+        using dyn = compound_unit_q<decltype(g{} * m{} / (s{} * s{})), "dyn">;
 
         __unithpp_literals(m)
         __unithpp_literals(g)
@@ -794,6 +854,30 @@ namespace Unit {
         template <typename U> requires requires { rad{std::declval<Quantity<U>>()}; }
         constexpr auto tan(const Quantity<U>& q) {
             return std::tan(rad{q}.value);
+        }
+    }
+
+
+    namespace extra_functions {
+#include <chrono>
+#include <thread>
+
+        template <typename U>
+        static void sleep(Quantity<U> v) {
+            std::this_thread::sleep_for(std::chrono::nanoseconds{
+                static_cast<long>(defaults::nano<defaults::s>{v}.value)
+            });
+        }
+
+        template <typename U>
+        static defaults::nano<defaults::s> get_time(Quantity<U> v) {
+            return defaults::nano<defaults::s>{
+                static_cast<float>(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch()
+                    ).count()
+                )
+            };
         }
     }
 }

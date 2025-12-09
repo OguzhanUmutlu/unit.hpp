@@ -2,7 +2,7 @@
 * Unit.hpp
  * A header-only C++20 library for compile-time dimensional analysis and unit conversion.
  *
- * Version: 0.14
+ * Version: 0.16
  * Author:  OguzhanUmutlu
  * GitHub:  https://github.com/OguzhanUmutlu/unit.hpp
  *
@@ -11,7 +11,6 @@
 
 #pragma once
 #include <iostream>
-#include <cmath>
 
 #include "Unit.hpp"
 
