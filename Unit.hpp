@@ -2,7 +2,7 @@
 * Unit.hpp
  * A header-only C++20 library for compile-time dimensional analysis and unit conversion.
  *
- * Version: 0.16
+ * Version: 0.17
  * Author:  OguzhanUmutlu
  * GitHub:  https://github.com/OguzhanUmutlu/unit.hpp
  *
@@ -20,7 +20,7 @@
 #include <thread>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 16;
+static constexpr int UNIT_HPP_VERSION_MINOR = 17;
 
 namespace Unit {
     using float_t = double;
@@ -867,8 +867,7 @@ namespace Unit {
             });
         }
 
-        template <typename U>
-        static defaults::nano<defaults::s> get_time(Quantity<U> v) {
+        static defaults::nano<defaults::s> get_time() {
             return defaults::nano<defaults::s>{
                 static_cast<float>(
                     std::chrono::duration_cast<std::chrono::nanoseconds>(
