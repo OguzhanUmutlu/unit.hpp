@@ -2,7 +2,7 @@
 * Unit.hpp
  * A header-only C++20 library for compile-time dimensional analysis and unit conversion.
  *
- * Version: 0.19
+ * Version: 0.20
  * Author:  OguzhanUmutlu
  * GitHub:  https://github.com/OguzhanUmutlu/unit.hpp
  *
@@ -20,7 +20,7 @@
 #include <thread>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 19;
+static constexpr int UNIT_HPP_VERSION_MINOR = 20;
 
 namespace Unit {
     using float_t = double;
@@ -526,13 +526,27 @@ namespace Unit {
         template <typename OtherUnit, typename OtherValue>
         constexpr auto operator*(const Quantity<OtherUnit, OtherValue>& rhs) const {
             using ResultUnit = binary_op_result_t<ThisUnit, OtherUnit, 1>;
-            return Quantity<ResultUnit, decltype(value * rhs.value)>(value * rhs.value);
+
+            if constexpr (std::tuple_size_v<typename ResultUnit::Units> == 0) {
+                constexpr float_t lhs_scale = get_unit_scale<ThisUnit>();
+                constexpr float_t rhs_scale = get_unit_scale<OtherUnit>();
+                return static_cast<float_t>((value * lhs_scale) * (rhs.value * rhs_scale));
+            } else {
+                return Quantity<ResultUnit, decltype(value * rhs.value)>(value * rhs.value);
+            }
         }
 
         template <typename OtherUnit, typename OtherValue>
         constexpr auto operator/(const Quantity<OtherUnit, OtherValue>& rhs) const {
             using ResultUnit = binary_op_result_t<ThisUnit, OtherUnit, -1>;
-            return Quantity<ResultUnit, decltype(value / rhs.value)>(value / rhs.value);
+
+            if constexpr (std::tuple_size_v<typename ResultUnit::Units> == 0) {
+                constexpr float_t lhs_scale = get_unit_scale<ThisUnit>();
+                constexpr float_t rhs_scale = get_unit_scale<OtherUnit>();
+                return static_cast<float_t>((value * lhs_scale) / (rhs.value * rhs_scale));
+            } else {
+                return Quantity<ResultUnit, decltype(value / rhs.value)>(value / rhs.value);
+            }
         }
 
         constexpr auto operator*(ValueType rhs) const {

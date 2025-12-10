@@ -17,7 +17,7 @@ int main() {
     // Define variables using literals.
     // Notice we can use 'mi' (miles) and 'hour' directly.
     auto distance = 60.0_mi;
-    auto time     = 1.0_hour;
+    auto time = 1.0_hour;
 
     std::cout << (1_m == 5_m) << std::endl;
 
@@ -54,13 +54,13 @@ int main() {
 
     // Acceleration: 0 to 100 km/h in 5 seconds
     auto v_initial = 0.0_km / 1.0_hour;
-    auto v_final   = 100.0_km / 1.0_hour;
-    auto delta_t   = 5.0_s;
+    auto v_final = 100.0_km / 1.0_hour;
+    auto delta_t = 5.0_s;
 
     // Note: We cast to m/s for the calculation to keep units clean,
     // though the library would handle the math regardless.
     MetersPerSecond dv = MetersPerSecond(v_final) - MetersPerSecond(v_initial);
-    auto acceleration  = dv / delta_t;
+    auto acceleration = dv / delta_t;
 
     // F = m * a
     // The result is implicitly in [kg * m * s^-2]
@@ -101,8 +101,8 @@ int main() {
     // Formula: R = (v^2 * sin(2*theta)) / g
 
     auto v_launch = 50.0_m / 1.0_s;
-    auto angle    = 45.0_deg; // Input in degrees
-    auto g_val    = 9.81_m / (1.0_s * 1.0_s);
+    auto angle = 45.0_deg; // Input in degrees
+    auto g_val = 9.81_m / (1.0_s * 1.0_s);
 
     // Unit::defaults::sin takes an angle and returns a dimensionless double
     // We compute sin(2 * theta).
