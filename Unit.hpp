@@ -2,7 +2,7 @@
 * Unit.hpp
  * A header-only C++20 library for compile-time dimensional analysis and unit conversion.
  *
- * Version: 0.17
+ * Version: 0.18
  * Author:  OguzhanUmutlu
  * GitHub:  https://github.com/OguzhanUmutlu/unit.hpp
  *
@@ -20,7 +20,7 @@
 #include <thread>
 
 static constexpr int UNIT_HPP_VERSION_MAJOR = 0;
-static constexpr int UNIT_HPP_VERSION_MINOR = 17;
+static constexpr int UNIT_HPP_VERSION_MINOR = 18;
 
 namespace Unit {
     using float_t = double;
@@ -738,6 +738,7 @@ namespace Unit {
         using rad = base_unit_q<"rad">;
         using px = Quantity<base_unit<"px">, unsigned>;
 
+        using pwm = compound_unit_q<micro<s>, "pwm">;
         using L = compound_unit_q<deci<m, 3>, "L">;
         using deg = compound_unit_q<rad, "deg", std::ratio<17453292519943296, 1000000000000000000>>;
         using grad = compound_unit_q<rad, "grad", std::ratio<15707963267948966, 1000000000000000000>>;
@@ -785,6 +786,7 @@ namespace Unit {
         __unithpp_literals(rad)
         __unithpp_literals(px)
 
+        __unithpp_literals(pwm)
         __unithpp_literals(L)
         __unithpp_literals(deg)
         __unithpp_literals(grad)
